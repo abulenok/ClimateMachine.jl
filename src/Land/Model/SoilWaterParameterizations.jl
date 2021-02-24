@@ -562,20 +562,31 @@ function pressure_head(
     return ψ
 end
 
+
+function vg_matric_potential(
+    S_l::FT,
+    α::FT,
+    m::FT,
+    n::FT,
+) where {FT}
+    ψ_m = -((S_l^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
+    return ψ_m
+end
+
 """
     matric_potential(
             model::vanGenuchten{FT},
             S_l::FT
     ) where {FT}
 
-Compute the van Genuchten function for matric potential.
+Wrapper function which computes the van Genuchten function for matric potential.
 """
 function matric_potential(model::vanGenuchten{FT}, S_l::FT, aux::Vars) where {FT}
     @unpack n, m, α = model
     m = m(aux)
     n = n(aux)
     α = α(aux)
-    ψ_m = -((S_l^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
+    ψ_m = vg_matric_potential(S_l, α, m, n)
     return ψ_m
 end
 
