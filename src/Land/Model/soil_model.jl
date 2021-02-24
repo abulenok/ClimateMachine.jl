@@ -18,10 +18,6 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct SoilParamFunctions{FT} <: AbstractSoilParameterFunctions{FT}
     "Aggregate porosity of the soil"
     porosity::FT = FT(NaN)
-    "Hydraulic conductivity at saturation. Units of m s-1."
-    Ksat::FT = FT(NaN)
-    "Specific storage of the soil. Units of m s-1."
-    S_s::FT = FT(NaN)
     "Volume fraction of gravels, relative to soil solids only. Units of m-3 m-3."
     ν_ss_gravel::FT = FT(NaN)
     "Volume fraction of SOM, relative to soil solids only. Units of m-3 m-3."

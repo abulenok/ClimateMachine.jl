@@ -16,6 +16,7 @@ module SoilWaterParameterizations
 
 using DocStringExtensions
 using UnPack
+using ...VariableTemplates
 
 export AbstractImpedanceFactor,
     NoImpedance,
@@ -77,18 +78,38 @@ defaults are for Yolo light clay.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct vanGenuchten{FT} <: AbstractHydraulicsModel{FT}
+struct vanGenuchten{FT,F1,F2,F3} <: AbstractHydraulicsModel{FT}
     "Exponent parameter - used in matric potential"
-    n::FT
+    n::F1
     "used in matric potential. The inverse of this carries units in 
      the expression for matric potential (specify in inverse meters)."
-    α::FT
+    α::F2
     "Exponent parameter - determined by n, used in hydraulic conductivity"
-    m::FT
-    function vanGenuchten{FT}(; n::FT = FT(1.43), α::FT = FT(2.6)) where {FT}
-        new(n, α, FT(1) - FT(1) / FT(n))
-    end
+    m::F3
 end
+
+function vanGenuchten(::Type{FT};
+                      n::Union{FT,Function} = FT(1.43),
+                      α::Union{FT,Function} = FT(2.6)
+                      ) where {FT}
+    
+    if typeof(n) <: AbstractFloat
+        fn = (aux) -> FT(n)
+    else
+        fn = n
+    end
+    
+    if typeof(α) <: AbstractFloat
+        fα = (aux) -> FT(α)
+    else
+        fα = α
+    end
+
+    fm = (aux) -> (FT(1)-FT(1)/fn(aux))
+    args = (fn, fα, fm)
+    return vanGenuchten{FT, typeof.(args)...}(args...)
+end
+
 
 """
     BrooksCorey{FT} <: AbstractHydraulicsModel{FT}
@@ -101,13 +122,32 @@ clay hydraulic conductivity/matric potential.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-Base.@kwdef struct BrooksCorey{FT} <: AbstractHydraulicsModel{FT}
+struct BrooksCorey{FT,F1,F2} <: AbstractHydraulicsModel{FT}
     "ψ_b - used in matric potential. Units of meters."
-    ψb::FT = FT(0.1656)
+    ψb::F1
     "Exponent used in matric potential and hydraulic conductivity."
-    m::FT = FT(0.5)
+    m::F2
 end
 
+function BrooksCorey(::Type{FT};
+                     ψb::Union{FT,Function} = FT(0.1656),
+                     m::Union{FT,Function} = FT(0.5)
+                     ) where {FT}
+    if typeof(m) <: AbstractFloat
+        fm = (aux) -> FT(m)
+    else
+        fm = m
+    end
+    
+    if typeof(ψb) <: AbstractFloat
+        fψ = (aux) -> FT(ψb)
+    else
+        fψ = ψb
+    end
+    args = (fψ, fm)
+    return BrooksCorey{FT, typeof.(args)...}(args...)
+end
+    
 """
     Haverkamp{FT} <: AbstractHydraulicsModel{FT}
 
@@ -120,26 +160,50 @@ Note that this only is used in creating a hydraulic conductivity function,
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Haverkamp{FT} <: AbstractHydraulicsModel{FT}
+struct Haverkamp{FT,F1,F2,F3,F4,F5} <: AbstractHydraulicsModel{FT}
     "exponent in conductivity"
-    k::FT
+    k::F1
     "constant A (units of cm^k) using in conductivity. Our sim is in meters"
-    A::FT
+    A::F2
     "Exponent parameter - using in matric potential"
-    n::FT
+    n::F3
     "used in matric potential. The inverse of this carries units in the 
      expression for matric potential (specify in inverse meters)."
-    α::FT
+    α::F4
     "Exponent parameter - determined by n, used in hydraulic conductivity"
-    m::FT
-    function Haverkamp{FT}(;
-        k::FT = FT(1.77),
-        A::FT = FT(124.6 / 100.0^1.77),
-        n::FT = FT(1.43),
-        α::FT = FT(2.6),
-    ) where {FT}
-        new(k, A, n, α, FT(1) - FT(1) / FT(n))
+    m::F5
+end
+
+function Haverkamp(::Type{FT};
+                   k::Union{FT,Function} = FT(1.77),
+                   A::Union{FT,Function} = FT(124.6 / 100.0^1.77),
+                   n::Union{FT,Function} = FT(1.43),
+                   α::Union{FT,Function} = FT(2.6),
+                   ) where {FT}
+    if typeof(n) <: AbstractFloat
+        fn = (aux) -> FT(n)
+    else
+        fn = n
     end
+    if typeof(k) <: AbstractFloat
+        fk = (aux) -> FT(k)
+    else
+        fk = k
+    end
+    if typeof(A) <: AbstractFloat
+        fA = (aux) -> FT(A)
+    else
+        fA = A
+    end
+    if typeof(α) <: AbstractFloat
+        fα = (aux) -> FT(α)
+    else
+        fα = α
+    end
+
+    fm = (aux) -> (FT(1)-FT(1)/fn(aux))
+    args = (fk, fA, fn, fα, fm)
+    return Haverkamp{FT, typeof.(args)...}(args...)
 end
 
 """
@@ -172,9 +236,10 @@ function moisture_factor(
     mm::MoistureDependent{FT},
     hm::vanGenuchten{FT},
     S_l::FT,
+    aux::Vars,
 ) where {FT}
-    n = hm.n
-    m = hm.m
+    n = hm.n(aux)
+    m = hm.m(aux)
     if S_l < FT(1)
         K = sqrt(S_l) * (FT(1) - (FT(1) - S_l^(FT(1) / m))^m)^FT(2)
     else
@@ -197,9 +262,10 @@ function moisture_factor(
     mm::MoistureDependent{FT},
     hm::BrooksCorey{FT},
     S_l::FT,
+    aux::Vars
 ) where {FT}
-    ψb = hm.ψb
-    m = hm.m
+    ψb = hm.ψb(aux)
+    m = hm.m(aux)
 
     if S_l < 1
         K = S_l^(FT(2) * m + FT(3))
@@ -223,11 +289,12 @@ function moisture_factor(
     mm::MoistureDependent{FT},
     hm::Haverkamp{FT},
     S_l::FT,
+    aux::Vars,
 ) where {FT}
-    k = hm.k
-    A = hm.A
+    k = hm.k(aux)
+    A = hm.A(aux)
     if S_l < 1
-        ψ = matric_potential(hm, S_l)
+        ψ = matric_potential(hm, S_l, aux)
         K = A / (A + abs(ψ)^k)
     else
         K = FT(1)
@@ -251,6 +318,7 @@ function moisture_factor(
     mm::MoistureIndependent{FT},
     hm::AbstractHydraulicsModel{FT},
     S_l::FT,
+    aux::Vars
 ) where {FT}
     Factor = FT(1.0)
     return Factor
@@ -398,11 +466,12 @@ function hydraulic_conductivity(
     porosity::FT,
     T::FT,
     S_l::FT,
+    aux::Vars,
 ) where {FT}
     K = FT(
         viscosity_factor(viscosity, T) *
         impedance_factor(impedance, θ_i, porosity * S_l) *
-        moisture_factor(moisture, hydraulics, S_l),
+        moisture_factor(moisture, hydraulics, S_l, aux),
     )
     return K
 end
@@ -480,12 +549,13 @@ function pressure_head(
     S_s::FT,
     ϑ_l::FT,
     θ_i::FT,
+    aux::Vars,
 ) where {FT}
     eff_porosity = porosity - θ_i
     S_l_eff = effective_saturation(eff_porosity, ϑ_l)
     if S_l_eff < 1
         S_l = effective_saturation(porosity, ϑ_l)
-        ψ = matric_potential(model, S_l)
+        ψ = matric_potential(model, S_l, aux)
     else
         ψ = (ϑ_l - eff_porosity) / S_s
     end
@@ -500,8 +570,11 @@ end
 
 Compute the van Genuchten function for matric potential.
 """
-function matric_potential(model::vanGenuchten{FT}, S_l::FT) where {FT}
+function matric_potential(model::vanGenuchten{FT}, S_l::FT, aux::Vars) where {FT}
     @unpack n, m, α = model
+    m = m(aux)
+    n = n(aux)
+    α = α(aux)
     ψ_m = -((S_l^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
     return ψ_m
 end
@@ -515,9 +588,11 @@ end
 Compute the van Genuchten function as a proxy for the Haverkamp model 
 matric potential (for testing purposes).
 """
-function matric_potential(model::Haverkamp{FT}, S_l::FT) where {FT}
+function matric_potential(model::Haverkamp{FT}, S_l::FT, aux::Vars) where {FT}
     @unpack n, m, α = model
-
+    m = m(aux)
+    n = n(aux)
+    α = α(aux)
     ψ_m = -((S_l^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
     return ψ_m
 end
@@ -530,9 +605,10 @@ end
 
 Compute the Brooks and Corey function for matric potential.
 """
-function matric_potential(model::BrooksCorey{FT}, S_l::FT) where {FT}
+function matric_potential(model::BrooksCorey{FT}, S_l::FT, aux::Vars) where {FT}
     @unpack ψb, m = model
-    ψ_m = -ψb * S_l^(-FT(1) / m)
+    
+    ψ_m = -ψb(aux) * S_l^(-FT(1) / m(aux))
     return ψ_m
 end
 
@@ -547,11 +623,14 @@ end
 Compute the effective saturation given the matric potential, using
 the van Genuchten formulation.
 """
-function inverse_matric_potential(model::vanGenuchten{FT}, ψ::FT) where {FT}
+function inverse_matric_potential(model::vanGenuchten{FT}, ψ::FT, aux::Vars) where {FT}
 
     ψ > 0 && error("Matric potential is positive")
 
     @unpack n, m, α = model
+    n = n(aux)
+    m = m(aux)
+    α = α(aux)
     S = (FT(1) + (α * abs(ψ))^n)^(-m)
     return S
 end
@@ -567,9 +646,12 @@ Compute the effective saturation given the matric potential using the
 Haverkamp hydraulics model. This model uses the van Genuchten 
 formulation for matric potential.
 """
-function inverse_matric_potential(model::Haverkamp{FT}, ψ::FT) where {FT}
+function inverse_matric_potential(model::Haverkamp{FT}, ψ::FT, aux::Vars) where {FT}
     ψ > 0 && error("Matric potential is positive")
     @unpack n, m, α = model
+    n = n(aux)
+    m = m(aux)
+    α = α(aux)
     S = (FT(1) + (α * abs(ψ))^n)^(-m)
     return S
 end
@@ -584,11 +666,11 @@ end
 Compute the effective saturation given the matric potential using the 
 Brooks and Corey formulation.
 """
-function inverse_matric_potential(model::BrooksCorey{FT}, ψ::FT) where {FT}
+function inverse_matric_potential(model::BrooksCorey{FT}, ψ::FT, aux::Vars) where {FT}
     ψ > 0 && error("Matric potential is positive")
 
     @unpack ψb, m = model
-    S = (-ψ / ψb)^(-m)
+    S = (-ψ / ψb(aux))^(-m(aux))
     return S
 end
 

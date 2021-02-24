@@ -55,8 +55,6 @@ haverkamp_dataset_path = get_data_folder(haverkamp_dataset)
 
     soil_param_functions = SoilParamFunctions{FT}(
         porosity = 0.495,
-        Ksat = 0.0443 / (3600 * 100),
-        S_s = 1e-3,
     )
     # Keep in mind that what is passed is aux⁻.
     # Scalar fluxes are multiplied by ẑ (normal to the surface, -normal to the bottom,
@@ -69,11 +67,14 @@ haverkamp_dataset_path = get_data_folder(haverkamp_dataset)
         bottom_bc = LandComponentBC(soil_water = Neumann(bottom_flux)),
         surface_bc = LandComponentBC(soil_water = Dirichlet(surface_state)),
     )
-
+    Ksat = FT(0.0443 / (3600 * 100))
+    S_s = FT(1e-3)
     soil_water_model = SoilWaterModel(
         FT;
         moisture_factor = MoistureDependent{FT}(),
-        hydraulics = Haverkamp{FT}(),
+        hydraulics = Haverkamp(FT;),
+        Ksat = Ksat,
+        S_s = S_s,
         initialϑ_l = ϑ_l0,
     )
 

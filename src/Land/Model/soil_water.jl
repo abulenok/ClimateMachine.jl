@@ -61,7 +61,7 @@ liquid and ice form, and water content is conserved upon phase change.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct SoilWaterModel{FT, IF, VF, MF, HM, Fiϑl, Fiθi} <: AbstractWaterModel
+struct SoilWaterModel{FT, IF, VF, MF, HM,TK, TS, Fiϑl, Fiθi} <: AbstractWaterModel
     "Impedance Factor - will be 1 or ice dependent"
     impedance_factor::IF
     "Viscosity Factor - will be 1 or temperature dependent"
@@ -70,6 +70,10 @@ struct SoilWaterModel{FT, IF, VF, MF, HM, Fiϑl, Fiθi} <: AbstractWaterModel
     moisture_factor::MF
     "Hydraulics Model - used in matric potential and moisture factor of hydraulic conductivity"
     hydraulics::HM
+    "Saturated conductivity. Units of m s-1."
+    Ksat::TK
+    "Specific storage. Units of m s-1."
+    S_s::TS
     "Initial condition: augmented liquid fraction"
     initialϑ_l::Fiϑl
     "Initial condition: volumetric ice fraction"
@@ -83,6 +87,8 @@ end
         viscosity_factor::AbstractViscosityFactor{FT} = ConstantViscosity{FT}(),
         moisture_factor::AbstractMoistureFactor{FT} = MoistureIndependent{FT}(),
         hydraulics::AbstractHydraulicsModel{FT} = vanGenuchten{FT}(),
+        Ksat::FT = FT(NaN),
+        S_s::FT = FT(NaN),
         initialϑ_l = (aux) -> FT(NaN),
         initialθ_i = (aux) -> FT(0.0),
     ) where {FT}
@@ -95,14 +101,31 @@ function SoilWaterModel(
     viscosity_factor::AbstractViscosityFactor{FT} = ConstantViscosity{FT}(),
     moisture_factor::AbstractMoistureFactor{FT} = MoistureIndependent{FT}(),
     hydraulics::AbstractHydraulicsModel{FT} = vanGenuchten{FT}(),
+    Ksat::Union{Function,Real} = (aux)-> eltype(aux)(NaN),
+    S_s::Union{Function,Real} = (aux) -> eltype(aux)(NaN),
     initialϑ_l::Function = (aux) -> eltype(aux)(NaN),
     initialθ_i::Function = (aux) -> eltype(aux)(0.0),
 ) where {FT}
+    if typeof(Ksat) <: Real
+        fKsat = (aux) -> FT(Ksat)
+    else
+        fKsat = Ksat
+    end
+    
+    if typeof(S_s) <: Real
+        fS_s = (aux) -> FT(S_s)
+    else
+        fS_s = S_s
+    end
+        
+    
     args = (
         impedance_factor,
         viscosity_factor,
         moisture_factor,
         hydraulics,
+        fKsat,
+        fS_s,
         initialϑ_l,
         initialθ_i,
     )
@@ -207,13 +230,14 @@ function soil_init_aux!(
     ψ = pressure_head(
         water.hydraulics,
         soil.param_functions.porosity,
-        soil.param_functions.S_s,
+        soil.water.S_s(aux),
         water.initialϑ_l(aux),
         water.initialθ_i(aux),
+        aux,
     )
     aux.soil.water.h = hydraulic_head(aux.z, ψ)
     aux.soil.water.K =
-        soil.param_functions.Ksat * hydraulic_conductivity(
+        soil.water.Ksat(aux) * hydraulic_conductivity(
             water.impedance_factor,
             water.viscosity_factor,
             water.moisture_factor,
@@ -222,6 +246,7 @@ function soil_init_aux!(
             soil.param_functions.porosity,
             T,
             S_l,
+            aux,
         )
 end
 
@@ -242,13 +267,14 @@ function land_nodal_update_auxiliary_state!(
     ψ = pressure_head(
         water.hydraulics,
         soil.param_functions.porosity,
-        soil.param_functions.S_s,
+        soil.water.S_s(aux),
         state.soil.water.ϑ_l,
         state.soil.water.θ_i,
+        aux,
     )
     aux.soil.water.h = hydraulic_head(aux.z, ψ)
     aux.soil.water.K =
-        soil.param_functions.Ksat * hydraulic_conductivity(
+        soil.water.Ksat(aux) * hydraulic_conductivity(
             water.impedance_factor,
             water.viscosity_factor,
             water.moisture_factor,
@@ -257,6 +283,7 @@ function land_nodal_update_auxiliary_state!(
             soil.param_functions.porosity,
             T,
             S_l,
+            aux,
         )
 end
 
@@ -278,9 +305,10 @@ function compute_gradient_argument!(
     ψ = pressure_head(
         water.hydraulics,
         soil.param_functions.porosity,
-        soil.param_functions.S_s,
+        soil.water.S_s(aux),
         state.soil.water.ϑ_l,
         state.soil.water.θ_i,
+        aux,
     )
     transform.soil.water.h = hydraulic_head(aux.z, ψ)
 
