@@ -525,6 +525,14 @@ function effective_saturation(porosity::FT, ϑ_l::FT) where {FT}
 end
 
 
+function saturated_pressure_head(
+    ϑ_l::FT,
+    porosity::FT,
+    S_s::FT
+) where {FT}
+    return (ϑ_l - eff_porosity) / S_s
+end
+
 """
     pressure_head(
         model::AbstractHydraulicsModel{FT},
@@ -557,10 +565,11 @@ function pressure_head(
         S_l = effective_saturation(porosity, ϑ_l)
         ψ = matric_potential(model, S_l, aux)
     else
-        ψ = (ϑ_l - eff_porosity) / S_s
+        ψ = saturated_pressure_head(ϑ_l, eff_porosity, S_s)
     end
     return ψ
 end
+
 
 
 function vg_matric_potential(
@@ -570,6 +579,15 @@ function vg_matric_potential(
     n::FT,
 ) where {FT}
     ψ_m = -((S_l^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
+    return ψ_m
+end
+
+function bc_matric_potential(
+    S_l::FT,
+    ψb::FT,
+    m::FT,
+) where {FT}
+    ψ_m = -ψb * S_l^(-FT(1) / m)
     return ψ_m
 end
 
@@ -604,7 +622,7 @@ function matric_potential(model::Haverkamp{FT}, S_l::FT, aux::Vars) where {FT}
     m = m(aux)
     n = n(aux)
     α = α(aux)
-    ψ_m = -((S_l^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
+    ψ_m = vg_matric_potential(S_l, α, m, n)
     return ψ_m
 end
 
@@ -618,8 +636,9 @@ Compute the Brooks and Corey function for matric potential.
 """
 function matric_potential(model::BrooksCorey{FT}, S_l::FT, aux::Vars) where {FT}
     @unpack ψb, m = model
-    
-    ψ_m = -ψb(aux) * S_l^(-FT(1) / m(aux))
+    ψb = ψb(aux)
+    m = m(aux)
+    ψ_m = bc_matric_potential(S_l, ψb, m)
     return ψ_m
 end
 
