@@ -40,7 +40,13 @@ export AbstractImpedanceFactor,
     hydraulic_head,
     matric_potential,
     volumetric_liquid_fraction,
-    inverse_matric_potential
+    inverse_matric_potential,
+    saturated_pressure_head,
+    vg_matric_potential,
+    bc_matric_potential,
+    vg_moisture_factor,
+    bc_moisture_factor,
+    haverkamp_moisture_factor
 
 """
     AbstractImpedanceFactor{FT <: AbstractFloat}
@@ -222,6 +228,16 @@ Moisture dependent moisture factor.
 struct MoistureDependent{FT} <: AbstractMoistureFactor{FT} end
 
 
+function vg_moisture_factor(S_l::FT, m::FT) where {FT}
+    if S_l < FT(1)
+        K = sqrt(S_l) * (FT(1) - (FT(1) - S_l^(FT(1) / m))^m)^FT(2)
+    else
+        K = FT(1)
+    end
+    return K
+end
+
+
 """
     moisture_factor(
         mm::MoistureDependent{FT},
@@ -238,10 +254,13 @@ function moisture_factor(
     S_l::FT,
     aux::Vars,
 ) where {FT}
-    n = hm.n(aux)
     m = hm.m(aux)
+    return vg_moisture_factor(S_l, m)
+end
+
+function bc_moisture_factor(S_l::FT, m::FT) where {FT}
     if S_l < FT(1)
-        K = sqrt(S_l) * (FT(1) - (FT(1) - S_l^(FT(1) / m))^m)^FT(2)
+        K = S_l^(FT(2) * m + FT(3))
     else
         K = FT(1)
     end
@@ -264,11 +283,21 @@ function moisture_factor(
     S_l::FT,
     aux::Vars
 ) where {FT}
-    ψb = hm.ψb(aux)
     m = hm.m(aux)
+    return bc_moisture_factor(S_l, m)
+end
 
-    if S_l < 1
-        K = S_l^(FT(2) * m + FT(3))
+
+function haverkamp_moisture_factor(
+    S_l::FT,
+    A::FT,
+    k::FT,
+    α::FT,
+    n::FT,
+    m::FT) where {FT}
+    if S_l < FT(1)
+        ψ = vg_matric_potential(S_l, α, m, n)
+        K = A / (A + abs(ψ)^k)
     else
         K = FT(1)
     end
@@ -293,13 +322,10 @@ function moisture_factor(
 ) where {FT}
     k = hm.k(aux)
     A = hm.A(aux)
-    if S_l < 1
-        ψ = matric_potential(hm, S_l, aux)
-        K = A / (A + abs(ψ)^k)
-    else
-        K = FT(1)
-    end
-    return K
+    n = hm.n(aux)
+    m = hm.m(aux)
+    α = hm.m(aux)
+    return haverkamp_moisture_factor(S_l, A, k, α,n,m)
 end
 
 
