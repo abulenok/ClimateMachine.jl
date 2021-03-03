@@ -32,6 +32,7 @@ using LinearAlgebra
 using Printf
 using StaticArrays
 using Test
+using DispatchedTuples
 
 using ClimateMachine
 using ClimateMachine.Atmos
@@ -447,15 +448,19 @@ function bomex_model(
             surface_flux,
         )
     end
-
+    bc_momentum = Impenetrable(DragLaw(
+        # normPu_int is the internal horizontal speed
+        # P represents the projection onto the horizontal
+        (state, aux, t, normPu_int) -> (u_star / normPu_int)^2,
+    ))
     problem = AtmosProblem(
         boundaryconditions = (
-            AtmosBC(
-                momentum = Impenetrable(DragLaw(
-                    # normPu_int is the internal horizontal speed
-                    # P represents the projection onto the horizontal
-                    (state, aux, t, normPu_int) -> (u_star / normPu_int)^2,
-                )),
+            AtmosBC(;
+                tup = DispatchedTuple(
+                    (Pair(Momentum(), bc_momentum),),
+                    DefaultBC(),
+                ),
+                momentum = bc_momentum,
                 energy = energy_bc,
                 moisture = moisture_bc,
                 turbconv = turbconv_bcs(turbconv)[1],

@@ -16,6 +16,9 @@ import ClimateMachine.BalanceLaws:
     primitive_to_prognostic!,
     get_prog_state,
     flux,
+    default_bcs,
+    boundary_value,
+    boundary_flux,
     precompute,
     source,
     eq_tends,
@@ -197,6 +200,8 @@ get_prog_state(state, ::up_ρaθ_liq{i}) where {i} =
     (state.turbconv.updraft[i], :ρaθ_liq)
 get_prog_state(state, ::up_ρaq_tot{i}) where {i} =
     (state.turbconv.updraft[i], :ρaq_tot)
+
+default_bcs(pv::EDMFPrognosticVariable) = (DefaultBC(),)
 
 struct EntrDetr{N_up} <: TendencyDef{Source} end
 struct PressSource{N_up} <: TendencyDef{Source} end

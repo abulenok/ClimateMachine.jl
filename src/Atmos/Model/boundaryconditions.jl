@@ -22,6 +22,10 @@ export AtmosBC,
 
 export average_density_sfc_int
 
+const NF1 = NumericalFluxFirstOrder
+const NF2 = NumericalFluxSecondOrder
+const NF∇ = NumericalFluxGradient
+
 """
     AtmosBC(momentum = Impenetrable(FreeSlip())
             energy   = Insulating()
@@ -31,17 +35,41 @@ export average_density_sfc_int
 
 The standard boundary condition for [`AtmosModel`](@ref). The default options imply a "no flux" boundary condition.
 """
-Base.@kwdef struct AtmosBC{M, E, Q, P, TR, TC}
+Base.@kwdef struct AtmosBC{M, E, Q, P, TR, TC, T}
     momentum::M = Impenetrable(FreeSlip())
     energy::E = Insulating()
     moisture::Q = Impermeable()
     precipitation::P = OutflowPrecipitation()
     tracer::TR = ImpermeableTracer()
     turbconv::TC = NoTurbConvBC()
+    tup::T = DispatchedTuple((), DefaultBC())
 end
 
 boundary_conditions(atmos::AtmosModel) = atmos.problem.boundaryconditions
 
+# Most are temporarily default
+default_bcs(pv::Mass) = (DefaultBC(),)
+default_bcs(pv::Momentum) = (Impenetrable(FreeSlip()),)
+default_bcs(pv::Energy) = (DefaultBC(),)
+default_bcs(pv::ρθ_liq_ice) = (DefaultBC(),)
+default_bcs(pv::TotalMoisture) = (DefaultBC(),)
+default_bcs(pv::LiquidMoisture) = (DefaultBC(),)
+default_bcs(pv::IceMoisture) = (DefaultBC(),)
+default_bcs(pv::Rain) = (DefaultBC(),)
+default_bcs(pv::Snow) = (DefaultBC(),)
+default_bcs(pv::Tracers) = (DefaultBC(),)
+
+function bc_precompute(
+    atmos_bc::AtmosBC,
+    atmos::AtmosModel,
+    args,
+    nf::Union{NF1, NF∇, NF2},
+)
+    dtup = DispatchedTupleDict(map(values(atmos_bc.tup)) do bc
+        (bc, bc_precompute(bc, atmos, args, nf))
+    end)
+    return dtup
+end
 
 function boundary_state!(
     nf,
@@ -56,9 +84,8 @@ function boundary_state!(
     state_int⁻,
     aux_int⁻,
 )
-
     args = (; aux⁺, state⁻, aux⁻, t, n, state_int⁻, aux_int⁻)
-
+    set_boundary_values!(state⁺, atmos, nf, bc, args)
     atmos_boundary_state!(nf, bc, atmos, state⁺, args)
     # update moisture auxiliary variables (perform saturation adjustment, if necessary)
     # to make thermodynamic quantities consistent with the boundary state
@@ -81,7 +108,7 @@ function boundary_state!(
 end
 
 function atmos_boundary_state!(nf, bc::AtmosBC, atmos, state⁺, args)
-    atmos_momentum_boundary_state!(nf, bc.momentum, atmos, state⁺, args)
+    # atmos_momentum_boundary_state!(nf, bc.momentum, atmos, state⁺, args)
     atmos_energy_boundary_state!(nf, bc.energy, atmos, state⁺, args)
     atmos_moisture_boundary_state!(nf, bc.moisture, atmos, state⁺, args)
     atmos_precipitation_boundary_state!(
@@ -116,7 +143,8 @@ function normal_boundary_flux_second_order!(
     aux_int⁻,
 ) where {S}
 
-    args = (;
+    _args = (;
+        fluxᵀn,
         n⁻,
         state⁻,
         diffusive⁻,
@@ -127,6 +155,8 @@ function normal_boundary_flux_second_order!(
         diffusive_int⁻,
         aux_int⁻,
     )
+    args = merge(_args, (precomputed = bc_precompute(bc, atmos, _args, nf),))
+    set_boundary_fluxes!(fluxᵀn, atmos, nf, bc, args)
 
     atmos_normal_boundary_flux_second_order!(nf, bc, atmos, fluxᵀn, args)
 end

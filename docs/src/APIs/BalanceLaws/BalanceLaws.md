@@ -103,6 +103,12 @@ transform_post_gradient_laplacian!
 ## Boundary conditions
 
 ```@docs
+DefaultBCValue
+DefaultBCFlux
+boundary_value
+boundary_flux
+set_boundary_values!
+set_boundary_fluxes!
 boundary_conditions
 boundary_state!
 ```
