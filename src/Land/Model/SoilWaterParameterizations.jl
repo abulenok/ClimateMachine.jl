@@ -553,7 +553,7 @@ end
 
 function saturated_pressure_head(
     ϑ_l::FT,
-    porosity::FT,
+    eff_porosity::FT,
     S_s::FT
 ) where {FT}
     return (ϑ_l - eff_porosity) / S_s

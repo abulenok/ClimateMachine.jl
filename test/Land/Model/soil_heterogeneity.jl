@@ -143,7 +143,7 @@ end
 =#
 
 
-@testset "hydrostatic test" begin
+@testset "hydrostatic test 1" begin
     ClimateMachine.init()
     FT = Float64
 
@@ -257,6 +257,130 @@ end
   #  plot!(legend = :bottomleft)
   #  plot!(xlabel = "ϑ_l")
   #  plot!(ylabel = "z")
+
+    MSE = mean((soln.(z,interface_z,0.495,vgn,2.6,0.2,1e-3) .- dons_arr[4]["soil.water.ϑ_l"]) .^ 2.0)
+    @test MSE < 1e-4
+end
+
+
+@testset "hydrostatic test 2" begin
+    ClimateMachine.init()
+    FT = Float64
+
+    function init_soil_water!(land, state, aux, localgeo, time)
+        myfloat = eltype(aux)
+        state.soil.water.ϑ_l = myfloat(land.soil.water.initialϑ_l(aux))
+        state.soil.water.θ_i = myfloat(land.soil.water.initialθ_i(aux))
+    end
+
+    soil_heat_model = PrescribedTemperatureModel()
+
+    soil_param_functions = SoilParamFunctions{FT}(
+        porosity = 0.41,
+    )
+    # Keep in mind that what is passed is aux⁻.
+    # Scalar fluxes are multiplied by ẑ (normal to the surface, -normal to the bottom,
+    # where normal point outs of the domain.)
+    bottom_flux = (aux, t) -> eltype(aux)(0.0)
+    surface_flux = bottom_flux
+    ϑ_l0 = (aux) -> eltype(aux)(0.15)
+    bc = LandDomainBC(
+        bottom_bc = LandComponentBC(soil_water = Neumann(bottom_flux)),
+        surface_bc = LandComponentBC(soil_water = Neumann(surface_flux)),
+    )
+    Ksat = (aux) -> eltype(aux)(0.443 / (3600 * 100))
+    S_s = (aux) -> eltype(aux)(1e-3)
+    sigmoid(x, offset, width) = typeof(x)(exp((x-offset)/width)/(1+exp((x-offset)/width)))
+
+    vgα = (aux) -> eltype(aux)(sigmoid(aux.z, -0.5, 0.02)*(14.5-0.8)+0.8)
+    vgn = (aux) -> eltype(aux)(sigmoid(aux.z, -0.5, 0.02)*(2.68-1.09)+1.09)
+    
+    soil_water_model = SoilWaterModel(
+        FT;
+        moisture_factor = MoistureDependent{FT}(),
+        hydraulics = vanGenuchten(FT;n = vgn, α = vgα),
+        Ksat = Ksat,
+        S_s = S_s,
+        initialϑ_l = ϑ_l0,
+    )
+
+    m_soil = SoilModel(soil_param_functions, soil_water_model, soil_heat_model)
+    sources = ()
+    m = LandModel(
+        param_set,
+        m_soil;
+        boundary_conditions = bc,
+        source = sources,
+        init_state_prognostic = init_soil_water!,
+    )
+
+
+    N_poly = 1
+    nelem_vert = 20
+
+    # Specify the domain boundaries
+    zmax = FT(0)
+    zmin = FT(-1)
+
+    driver_config = ClimateMachine.SingleStackConfiguration(
+        "LandModel",
+        N_poly,
+        nelem_vert,
+        zmax,
+        param_set,
+        m;
+        zmin = zmin,
+        numerical_flux_first_order = CentralNumericalFluxFirstOrder(),
+    )
+
+    t0 = FT(0)
+    timeend = FT(60 * 60*24*50)
+
+    dt = FT(100)
+    n_outputs = 3
+    every_x_simulation_time = ceil(Int, timeend / n_outputs)
+    solver_config = ClimateMachine.SolverConfiguration(
+        t0,
+        timeend,
+        driver_config,
+        ode_dt = dt,
+    )
+    aux = solver_config.dg.state_auxiliary
+    state_types = (Prognostic(),Auxiliary())
+    dons_arr =
+        Dict[dict_of_nodal_states(solver_config, state_types; interp = true)]
+    time_data = FT[0]
+    callback = GenericCallbacks.EveryXSimulationTime(every_x_simulation_time) do
+        dons = dict_of_nodal_states(solver_config, state_types; interp = true)
+        push!(dons_arr, dons)
+        push!(time_data, gettime(solver_config.solver))
+        nothing
+    end
+    ClimateMachine.invoke!(solver_config; user_callbacks = (callback,))
+    z = dons_arr[1]["z"]
+
+    function hydrostatic_profile(z, porosity, n, α)
+        myf = eltype(z)
+        m = FT(1 - 1 / n)
+        S = FT((FT(1) + (α * abs(z))^n)^(-m))
+        return FT(S * porosity)
+    end
+    function soln(z,porosity)
+        if z< -0.5
+            return hydrostatic_profile(z,porosity,1.09,0.8)
+        else
+            return hydrostatic_profile(z,porosity,2.68,14.5)
+        end
+    end
+    
+    plot(dons_arr[1]["soil.water.ϑ_l"],z, label = "initial state")
+    plot!(dons_arr[2]["soil.water.ϑ_l"],z, label = "67 d")
+    plot!(dons_arr[3]["soil.water.ϑ_l"],z, label = "133 d")
+    plot!(dons_arr[4]["soil.water.ϑ_l"],z, label = "200 d")
+    plot!(soln.(z,0.41),z, label = "steady state soln")
+    plot!(legend = :bottomleft)
+    plot!(xlabel = "ϑ_l")
+    plot!(ylabel = "z")
 
     MSE = mean((soln.(z,interface_z,0.495,vgn,2.6,0.2,1e-3) .- dons_arr[4]["soil.water.ϑ_l"]) .^ 2.0)
     @test MSE < 1e-4
