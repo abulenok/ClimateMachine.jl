@@ -99,6 +99,23 @@ default_bcs(::NoTurbConv) = ()
 
 boundary_conditions(atmos::AtmosModel) = atmos.problem.boundaryconditions
 
+function bc_precompute(
+    atmos_bc::AtmosBC,
+    atmos::AtmosModel,
+    args,
+    nf::Union{NF1, NF∇, NF2},
+)
+    dtup = DispatchedTupleSet(map(prognostic_vars(atmos)) do prog
+        dtup_bc = DispatchedTuple(
+        map(dispatch(atmos_bc.tup, prog)) do bc
+            (bc, bc_precompute(bc, atmos, args, nf))
+        end)
+        (prog, dtup_bc)
+    end)
+    @show dtup
+    return (; dtup)
+end
+
 function boundary_state!(
     nf::Union{NumericalFluxFirstOrder, NumericalFluxGradient},
     bc::AtmosBC,

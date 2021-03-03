@@ -56,7 +56,7 @@ A tuple of BalanceLaw-specific default boundary conditions
 function default_bcs end
 
 """
-    set_bcs!(state⁺, bl, nf, bc, ntargs, prog_vars = prognostic_vars(bl))
+    set_bcs!(state⁺, bl, nf, bc, args, prog_vars = prognostic_vars(bl))
 
 A convenience method for setting `state⁺` inside `boundary_state!`.
 
@@ -64,20 +64,21 @@ Arguments:
  - `state⁺` the exterior state
  - `bl` the balance law
  - `nf::Union{NumericalFluxFirstOrder,NumericalFluxGradient}` the numerical flux
- - `ntargs` the top-level arguments
+ - `args` the top-level arguments
  - `prog_vars` (optional) the balance law's prognostic variables
 """
-function set_bcs!(state⁺, bl, nf, bc, ntargs, prog_vars = prognostic_vars(bl))
-    state⁻ = ntargs.state
+function set_bcs!(state⁺, bl, nf, bc, args, prog_vars = prognostic_vars(bl))
+    state⁻ = args.state
     bcs_default = dispatched_tuple(default_bcs(bl))
     map(prog_vars) do prog
         var⁺, name = get_prog_state(state⁺, prog)
         var⁻, name = get_prog_state(state⁻, prog)
         tup = used_bcs(bl, prog, bc, bcs_default)
         bcvals = map(tup) do bc_pv
-            bc_val(bc_pv, bl, nf, ntargs)
+            bc_val(bc_pv, bl, nf, args)
         end
-        set_bc!(var⁺, name, bcvals)
+        Σbcvals = sum_bc_vals(bcvals)
+        setproperty!(var⁺, name, Σbcvals)
     end
 end
 
@@ -119,10 +120,22 @@ function used_bcs(bl::BalanceLaw, prog::PrognosticVariable, bc, bcs_default)
     return tup
 end
 
-# TODO: remove Tuple{DefaultBC} method:
-# TODO: why is NTuple{N, DefaultBC}) where {N} needed?
-set_bc!(var⁺, name, bcvals::Tuple{DefaultBCValue}) = nothing
-set_bc!(var⁺, name, bcvals::NTuple{N, DefaultBCValue}) where {N} = nothing
-set_bc!(var⁺, name, bcvals) = setproperty!(var⁺, name, sum(bcvals))
+sum_bc_vals(bcvals::NTuple{N, DefaultBCValue}) where {N} = 0
+sum_bc_vals(bcvals) = sum(bcvals)
 
 prog_var_instance(bc::BCDef{PV}) where {PV} = PV()
+
+"""
+    bc_precompute(bc, bl, args, dispatch_helper)
+
+A nested NamedTuple of precomputed (cached) values
+and or objects. This is useful for "expensive"
+point-wise quantities that are used in multiple
+boundary condition functions. For example, computing
+a quantity that requires iteration.
+
+This is a separated from [`precompute`](@ref), as
+simply because there are many `precompute` definitions,
+and splitting the methods helps search-ability.
+"""
+bc_precompute(bc, bl, args, dispatch_helper) = NamedTuple()

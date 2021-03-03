@@ -10,6 +10,7 @@ export AtmosModel,
     Compressible,
     Anelastic1D
 
+using DispatchedTuples
 using UnPack
 using CLIMAParameters
 using CLIMAParameters.Planet: grav, cp_d, R_v, LH_v0, e_int_v0
@@ -58,6 +59,7 @@ import ..BalanceLaws:
     flux,
     precompute,
     source,
+    bc_precompute,
     wavespeed,
     boundary_conditions,
     boundary_state!,
@@ -84,7 +86,6 @@ import ..DGMethods.NumericalFluxes:
     boundary_state!,
     boundary_flux_second_order!,
     normal_boundary_flux_second_order!,
-    NumericalFluxFirstOrder,
     NumericalFluxGradient,
     NumericalFluxSecondOrder,
     CentralNumericalFluxHigherOrder,
@@ -92,6 +93,7 @@ import ..DGMethods.NumericalFluxes:
     CentralNumericalFluxFirstOrder,
     numerical_flux_first_order!,
     NumericalFluxFirstOrder
+
 using ..DGMethods.NumericalFluxes:
     RoeNumericalFlux,
     HLLCNumericalFlux,

@@ -129,36 +129,36 @@ function bc_val(
     return bc_val(ImpenetrableFreeSlip{Momentum}(), atmos, nf, args)
 end
 
-function compute_τn(bc, args)
-    @unpack state, state_int, n = args
-
+function bc_precompute(bc::ImpenetrableDragLaw{Momentum}, atmos, args, nf)
+    @unpack state, state_int, n, precomputed = args
     u1⁻ = state_int.ρu / state_int.ρ
     u_int_tan = u1 - dot(u1, n) .* SVector(n)
     normu_int_tan = norm(u_int_tan)
     # NOTE: difference from design docs since normal points outwards
     C = bc.drag(state, aux, t, normu_int_tan)
     τn = C * normu_int_tan * u_int_tan
-    return τn
+    return (;τn)
 end
 
 function bc_val(bc::ImpenetrableDragLaw{Momentum}, ::AtmosModel, ::NF2, args)
-    @unpack state = args
-    τn = compute_τn(bc, args)
+    @unpack state, precomputed = args
+    @unpack τn = dispatch(precomputed.dtup, Momentum(), bc)
     # both sides involve projections of normals, so signs are consistent
     return state.ρ + state.ρ * τn
 end
 
-bc_val(
+function bc_val(
     ::ImpenetrableDragLaw{PV},
     ::AtmosModel,
     ::Union{NF1, NF∇},
     args,
-) where {PV <: Union{Momentum, Energy}} = DefaultBCValue()
+) where {PV <: Union{Momentum, Energy}}
+    DefaultBCValue()
+end
 
-function bc_val(::ImpenetrableDragLaw{Energy}, ::AtmosModel, ::NF2, args)
+function bc_val(bc::ImpenetrableDragLaw{Energy}, ::AtmosModel, ::NF2, args)
     @unpack state = args
-
-    τn = compute_τn(bc, args)
+    @unpack τn = dispatch(precomputed.dtup, Momentum(), bc)
     # both sides involve projections of normals, so signs are consistent
     return state.energy.ρe + state.ρu' * τn
 end
