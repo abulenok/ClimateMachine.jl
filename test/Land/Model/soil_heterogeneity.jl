@@ -283,17 +283,16 @@ end
     # where normal point outs of the domain.)
     bottom_flux = (aux, t) -> eltype(aux)(0.0)
     surface_flux = bottom_flux
-    ϑ_l0 = (aux) -> eltype(aux)(0.15)
+    ϑ_l0 = (aux) -> eltype(aux)(0.22)
     bc = LandDomainBC(
         bottom_bc = LandComponentBC(soil_water = Neumann(bottom_flux)),
         surface_bc = LandComponentBC(soil_water = Neumann(surface_flux)),
     )
-    Ksat = (aux) -> eltype(aux)(0.443 / (3600 * 100))
-    S_s = (aux) -> eltype(aux)(1e-3)
     sigmoid(x, offset, width) = typeof(x)(exp((x-offset)/width)/(1+exp((x-offset)/width)))
-
-    vgα = (aux) -> eltype(aux)(sigmoid(aux.z, -0.5, 0.02)*(14.5-0.8)+0.8)
-    vgn = (aux) -> eltype(aux)(sigmoid(aux.z, -0.5, 0.02)*(2.68-1.09)+1.09)
+    Ksat = (aux) -> eltype(aux)(sigmoid(aux.z, -0.5, 0.02)*(4.42/3600/100))#(4.42-0.26)+0.26)/ (3600 * 100))
+    S_s = (aux) -> eltype(aux)(1e-3)
+    vgα = (aux) -> eltype(aux)(sigmoid(aux.z, -0.5, 0.02)*(7.5-1.9)+1.9)
+    vgn = (aux) -> eltype(aux)(sigmoid(aux.z, -0.5, 0.02)*(1.89-1.31)+1.31)
     
     soil_water_model = SoilWaterModel(
         FT;
@@ -316,7 +315,7 @@ end
 
 
     N_poly = 1
-    nelem_vert = 20
+    nelem_vert = 10
 
     # Specify the domain boundaries
     zmax = FT(0)
@@ -334,10 +333,10 @@ end
     )
 
     t0 = FT(0)
-    timeend = FT(60 * 60*24*50)
+    timeend = FT(60 * 60*24*40000)
 
-    dt = FT(100)
-    n_outputs = 3
+    dt = FT(4000)
+    n_outputs = 20
     every_x_simulation_time = ceil(Int, timeend / n_outputs)
     solver_config = ClimateMachine.SolverConfiguration(
         t0,
@@ -359,25 +358,25 @@ end
     ClimateMachine.invoke!(solver_config; user_callbacks = (callback,))
     z = dons_arr[1]["z"]
 
-    function hydrostatic_profile(z, porosity, n, α)
+    function hydrostatic_profile(z,offset, porosity, n, α)
         myf = eltype(z)
         m = FT(1 - 1 / n)
-        S = FT((FT(1) + (α * abs(z))^n)^(-m))
+        S = FT((FT(1) + (α * (z+offset))^n)^(-m))
         return FT(S * porosity)
     end
-    function soln(z,porosity)
+    function soln(z,offset,porosity)
         if z< -0.5
-            return hydrostatic_profile(z,porosity,1.09,0.8)
+            return hydrostatic_profile(z,offset, porosity,1.31,1.9)
         else
-            return hydrostatic_profile(z,porosity,2.68,14.5)
+            return hydrostatic_profile(z,offset, porosity,1.89,7.5)
         end
     end
     
     plot(dons_arr[1]["soil.water.ϑ_l"],z, label = "initial state")
-    plot!(dons_arr[2]["soil.water.ϑ_l"],z, label = "67 d")
-    plot!(dons_arr[3]["soil.water.ϑ_l"],z, label = "133 d")
-    plot!(dons_arr[4]["soil.water.ϑ_l"],z, label = "200 d")
-    plot!(soln.(z,0.41),z, label = "steady state soln")
+    plot!(dons_arr[2]["soil.water.ϑ_l"],z, label = "25 d")
+    plot!(dons_arr[7]["soil.water.ϑ_l"],z, label = "150 d")
+    plot!(dons_arr[21]["soil.water.ϑ_l"],z, label = "500 d")
+    plot!(soln.(z,1.15,0.41),z, label = "steady state soln")
     plot!(legend = :bottomleft)
     plot!(xlabel = "ϑ_l")
     plot!(ylabel = "z")
