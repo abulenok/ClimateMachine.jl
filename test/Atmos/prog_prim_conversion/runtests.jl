@@ -19,7 +19,7 @@ using ClimateMachine.VariableTemplates
 using ClimateMachine.Thermodynamics
 using ClimateMachine.TemperatureProfiles
 using ClimateMachine.Atmos:
-    AtmosModel, DryModel, EquilMoist, NonEquilMoist, EnergyModel
+    AtmosPhysics, AtmosModel, DryModel, EquilMoist, NonEquilMoist, EnergyModel
 using ClimateMachine.BalanceLaws:
     prognostic_to_primitive!, primitive_to_prognostic!
 const BL = BalanceLaws
@@ -196,10 +196,10 @@ end
 
 @testset "Prognostic-Primitive conversion (array interface)" begin
     FT = Float64
+    physics = AtmosPhysics{FT}(param_set; moisture = DryModel())
     bl = AtmosModel{FT}(
         AtmosLESConfigType,
-        param_set;
-        moisture = DryModel(),
+        physics;
         init_state_prognostic = x -> x,
     )
     vs_prog = vars_state(bl, Prognostic(), FT)

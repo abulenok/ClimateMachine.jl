@@ -103,12 +103,15 @@ function config_surfacebubble(FT, N, resolution, xmax, ymax, zmax)
         ),
         init_state_prognostic = init_surfacebubble!,
     )
-    model = AtmosModel{FT}(
-        AtmosLESConfigType,
+    physics = AtmosPhysics{FT}(
         param_set;
-        problem = problem,
         turbulence = SmagorinskyLilly{FT}(C_smag),
         moisture = EquilMoist{FT}(),
+    )
+    model = AtmosModel{FT}(
+        AtmosLESConfigType,
+        physics;
+        problem = problem,
         source = (Gravity(),),
     )
     config = ClimateMachine.AtmosLESConfiguration(

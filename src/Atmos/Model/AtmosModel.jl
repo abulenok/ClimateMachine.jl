@@ -1,6 +1,7 @@
 module Atmos
 
 export AtmosModel,
+    AtmosPhysics,
     AtmosAcousticLinearModel,
     AtmosAcousticGravityLinearModel,
     HLLCNumericalFlux,
@@ -102,17 +103,15 @@ using ..DGMethods.NumericalFluxes:
 import ..Courant: advective_courant, nondiffusive_courant, diffusive_courant
 
 """
-    AtmosModel <: BalanceLaw
+    AtmosPhysics
 
 A `BalanceLaw` for atmosphere modeling. Users may over-ride prescribed
 default values for each field.
 
 # Usage
 
-    AtmosModel(
+    AtmosPhysics(
         param_set,
-        problem,
-        orientation,
         ref_state,
         turbulence,
         hyperdiffusion,
@@ -120,41 +119,16 @@ default values for each field.
         moisture,
         precipitation,
         radiation,
-        source,
         tracers,
         compressibility,
-        data_config,
     )
 
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct AtmosModel{
-    FT,
-    PS,
-    PR,
-    O,
-    E,
-    RS,
-    T,
-    TC,
-    HD,
-    VS,
-    M,
-    P,
-    R,
-    S,
-    TR,
-    LF,
-    C,
-    DC,
-} <: BalanceLaw
+struct AtmosPhysics{FT, PS, E, RS, T, TC, HD, VS, M, P, R, TR, LF, C}
     "Parameter Set (type to dispatch on, e.g., planet parameters. See CLIMAParameters.jl package)"
     param_set::PS
-    "Problem (initial and boundary conditions)"
-    problem::PR
-    "An orientation model"
-    orientation::O
     "Energy sub-model, can be energy-based or θ_liq_ice-based"
     energy::E
     "Reference State (For initial conditions, or for linearisation when using implicit solvers)"
@@ -173,16 +147,131 @@ struct AtmosModel{
     precipitation::P
     "Radiation Model (Equations for radiative fluxes)"
     radiation::R
-    "Source Terms (Problem specific source terms)"
-    source::S
     "Tracer Terms (Equations for dynamics of active and passive tracers)"
     tracers::TR
     "Large-scale forcing (Forcing information from GCMs, reanalyses, or observations)"
     lsforcing::LF
     "Compressibility switch"
     compressibility::C
+end
+
+"""
+    AtmosPhysics{FT}()
+
+Constructor for `AtmosPhysics`.
+"""
+function AtmosPhysics{FT}(
+    param_set::AbstractParameterSet;
+    energy = EnergyModel(),
+    ref_state = HydrostaticState(DecayingTemperatureProfile{FT}(param_set),),
+    turbulence = SmagorinskyLilly{FT}(C_smag(param_set)),
+    turbconv = NoTurbConv(),
+    hyperdiffusion = NoHyperDiffusion(),
+    viscoussponge = NoViscousSponge(),
+    moisture = EquilMoist{FT}(),
+    precipitation = NoPrecipitation(),
+    radiation = NoRadiation(),
+    tracers = NoTracers(),
+    lsforcing = NoLSForcing(),
+    compressibility = Compressible(),
+) where {FT <: AbstractFloat}
+
+    args = (
+        param_set,
+        energy,
+        ref_state,
+        turbulence,
+        turbconv,
+        hyperdiffusion,
+        viscoussponge,
+        moisture,
+        precipitation,
+        radiation,
+        tracers,
+        lsforcing,
+        compressibility,
+    )
+
+    return AtmosPhysics{FT, typeof.(args)...}(args...)
+end
+
+
+"""
+    AtmosModel <: BalanceLaw
+
+A `BalanceLaw` for atmosphere modeling. Users may over-ride prescribed
+default values for each field.
+
+# Usage
+
+    AtmosModel(
+        physics,
+        problem,
+        orientation,
+        source,
+        data_config,
+    )
+
+# Fields
+$(DocStringExtensions.FIELDS)
+"""
+struct AtmosModel{
+    FT,
+    PH,
+    PR,
+    O,
+    S,
+    DC,
+    PS,
+    E,
+    RS,
+    T,
+    TC,
+    HD,
+    VS,
+    M,
+    P,
+    R,
+    TR,
+    LF,
+    C,
+} <: BalanceLaw
+    "Atmos physics"
+    physics::PH
+    "Problem (initial and boundary conditions)"
+    problem::PR
+    "An orientation model"
+    orientation::O
+    "Source Terms (Problem specific source terms)"
+    source::S
     "Data Configuration (Helper field for experiment configuration)"
     data_config::DC
+    "Parameter Set (type to dispatch on, e.g., planet parameters. See CLIMAParameters.jl package)"
+    param_set::PS
+    "Energy sub-model, can be energy-based or θ_liq_ice-based"
+    energy::E
+    "Reference State (For initial conditions, or for linearisation when using implicit solvers)"
+    ref_state::RS
+    "Turbulence Closure (Equations for dynamics of under-resolved turbulent flows)"
+    turbulence::T
+    "Turbulence Convection Closure (e.g., EDMF)"
+    turbconv::TC
+    "Hyperdiffusion Model (Equations for dynamics of high-order spatial wave attenuation)"
+    hyperdiffusion::HD
+    "Viscous sponge layers"
+    viscoussponge::VS
+    "Moisture Model (Equations for dynamics of moist variables)"
+    moisture::M
+    "Precipitation Model (Equations for dynamics of precipitating species)"
+    precipitation::P
+    "Radiation Model (Equations for radiative fluxes)"
+    radiation::R
+    "Tracer Terms (Equations for dynamics of active and passive tracers)"
+    tracers::TR
+    "Large-scale forcing (Forcing information from GCMs, reanalyses, or observations)"
+    lsforcing::LF
+    "Compressibility switch"
+    compressibility::C
 end
 
 abstract type Compressibilty end
@@ -213,49 +302,38 @@ Constructor for `AtmosModel` (where `AtmosModel <: BalanceLaw`).
 """
 function AtmosModel{FT}(
     orientation::Orientation,
-    param_set::AbstractParameterSet;
+    physics::AtmosPhysics;
     init_state_prognostic = nothing,
     problem = AtmosProblem(init_state_prognostic = init_state_prognostic),
-    energy = EnergyModel(),
-    ref_state = HydrostaticState(DecayingTemperatureProfile{FT}(param_set),),
-    turbulence = SmagorinskyLilly{FT}(C_smag(param_set)),
-    turbconv = NoTurbConv(),
-    hyperdiffusion = NoHyperDiffusion(),
-    viscoussponge = NoViscousSponge(),
-    moisture = EquilMoist{FT}(),
-    precipitation = NoPrecipitation(),
-    radiation = NoRadiation(),
     source = (
         Gravity(),
         Coriolis(),
         GeostrophicForcing(FT, 7.62e-5, 0, 0),
-        turbconv_sources(turbconv)...,
+        turbconv_sources(physics.turbconv)...,
     ),
-    tracers = NoTracers(),
-    lsforcing = NoLSForcing(),
-    compressibility = Compressible(),
     data_config = nothing,
 ) where {FT <: AbstractFloat}
     @assert !any(isa.(source, Tuple))
 
     atmos = (
-        param_set,
+        physics,
         problem,
         orientation,
-        energy,
-        ref_state,
-        turbulence,
-        turbconv,
-        hyperdiffusion,
-        viscoussponge,
-        moisture,
-        precipitation,
-        radiation,
         source,
-        tracers,
-        lsforcing,
-        compressibility,
         data_config,
+        physics.param_set,
+        physics.energy,
+        physics.ref_state,
+        physics.turbulence,
+        physics.turbconv,
+        physics.hyperdiffusion,
+        physics.viscoussponge,
+        physics.moisture,
+        physics.precipitation,
+        physics.radiation,
+        physics.tracers,
+        physics.lsforcing,
+        physics.compressibility,
     )
 
     return AtmosModel{FT, typeof.(atmos)...}(atmos...)
@@ -269,11 +347,11 @@ and single stack configurations.
 """
 function AtmosModel{FT}(
     ::Union{Type{AtmosLESConfigType}, Type{SingleStackConfigType}},
-    param_set::AbstractParameterSet;
+    physics::AtmosPhysics;
     orientation = FlatOrientation(),
     kwargs...,
 ) where {FT <: AbstractFloat}
-    return AtmosModel{FT}(orientation, param_set; kwargs...)
+    return AtmosModel{FT}(orientation, physics; kwargs...)
 end
 
 """
@@ -284,11 +362,11 @@ configurations.
 """
 function AtmosModel{FT}(
     ::Type{AtmosGCMConfigType},
-    param_set::AbstractParameterSet;
+    physics::AtmosPhysics;
     orientation = SphericalOrientation(),
     kwargs...,
 ) where {FT <: AbstractFloat}
-    return AtmosModel{FT}(orientation, param_set; kwargs...)
+    return AtmosModel{FT}(orientation, physics; kwargs...)
 end
 
 """

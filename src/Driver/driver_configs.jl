@@ -201,9 +201,10 @@ function AtmosLESConfiguration(
         implicit_solver = SingleColumnLU,
         implicit_solver_adjustable = false,
     ),
+    physics = AtmosPhysics{FT}(param_set;),
     model = AtmosModel{FT}(
         AtmosLESConfigType,
-        param_set;
+        physics;
         init_state_prognostic = init_LES!,
     ),
     mpicomm = MPI.COMM_WORLD,
@@ -348,9 +349,10 @@ function AtmosGCMConfiguration(
     init_GCM!;
     array_type = ClimateMachine.array_type(),
     solver_type = DefaultSolverType(),
+    physics = AtmosPhysics{FT}(param_set),
     model = AtmosModel{FT}(
         AtmosGCMConfigType,
-        param_set;
+        physics;
         init_state_prognostic = init_GCM!,
     ),
     mpicomm = MPI.COMM_WORLD,
