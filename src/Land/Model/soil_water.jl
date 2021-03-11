@@ -300,16 +300,6 @@ function compute_gradient_flux!(
     diffusive.soil.water.K∇h = aux.soil.water.K * ∇transform.soil.water.h
 end
 
-function flux_second_order!(
-    land::LandModel,
-    soil::SoilModel,
-    water::SoilWaterModel,
-    flux::Grad,
-    state::Vars,
-    diffusive::Vars,
-    hyperdiffusive::Vars,
-    aux::Vars,
-    t::Real,
-)
-    flux.soil.water.ϑ_l -= diffusive.soil.water.K∇h
-end
+struct WaterDiffusion <: TendencyDef{Flux{SecondOrder}} end
+
+flux(::ϑLiquid, ::WaterDiffusion, ::LandModel, args) = -diffusive.soil.water.K∇h

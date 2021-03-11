@@ -11,44 +11,31 @@ function heaviside(x::FT) where {FT}
 end
 
 
-abstract type SoilSource{FT <: AbstractFloat} end
-
 """
-    PhaseChange <: SoilSource
+    PhaseChange{FT} <: TendencyDef{Source}
+
 The function which computes the freeze/thaw source term for Richard's equation,
 assuming the timescale is the maximum of the thermal timescale and the timestep.
 """
-Base.@kwdef struct PhaseChange{FT} <: SoilSource{FT}
+Base.@kwdef struct PhaseChange{FT} <: TendencyDef{Source}
     "Timestep"
     Δt::FT = FT(NaN)
     "Timescale for temperature changes"
     τLTE::FT = FT(NaN)
 end
 
+prognostic_vars(::PhaseChange) = (ϑLiquid(), θIce())
 
-function land_source!(
-    f::Function,
-    land::LandModel,
-    source::Vars,
-    state::Vars,
-    diffusive::Vars,
-    aux::Vars,
-    t::Real,
-    direction,
-)
-    f(land, source, state, diffusive, aux, t, direction)
+function precompute(land::LandModel, args, tt::Source)
+    dtup = DispatchedSet(map(land.source) do s
+        (s, precompute(s, land, args, tt))
+    end)
+    return (; dtup)
 end
 
-function land_source!(
-    source_type::PhaseChange,
-    land::LandModel,
-    source::Vars,
-    state::Vars,
-    diffusive::Vars,
-    aux::Vars,
-    t::Real,
-    direction,
-)
+function precompute(source_type::PhaseChange, land::LandModel, args, tt::Source)
+    @unpack state, diffusive, aux, t, direction = args
+
     FT = eltype(state)
 
     param_set = parameter_set(land)
@@ -82,35 +69,21 @@ function land_source!(
             heaviside(_Tfreeze - T) *
             heaviside(θ_l - θstar) - _ρice * θ_i * heaviside(T - _Tfreeze)
         )
-    source.soil.water.ϑ_l -= freeze_thaw / _ρliq
-    source.soil.water.θ_i += freeze_thaw / _ρice
+    return (; freeze_thaw)
 end
 
+function source(::ϑLiquid, s::PhaseChange, land::LandModel, args)
+    @unpack state = args
+    @unpack freeze_thaw = args.precomputed.dtup[s]
+    FT = eltype(state)
+    _ρliq = FT(ρ_cloud_liq(land.param_set))
+    return -freeze_thaw / _ρliq
+end
 
-# sources are applied additively
-
-@generated function land_source!(
-    stuple::Tuple,
-    land::LandModel,
-    source::Vars,
-    state::Vars,
-    diffusive::Vars,
-    aux::Vars,
-    t::Real,
-    direction,
-)
-    N = fieldcount(stuple)
-    return quote
-        Base.Cartesian.@nexprs $N i -> land_source!(
-            stuple[i],
-            land,
-            source,
-            state,
-            diffusive,
-            aux,
-            t,
-            direction,
-        )
-        return nothing
-    end
+function source(::θIce, s::PhaseChange, land::LandModel, args)
+    @unpack state = args
+    @unpack freeze_thaw = args.precomputed.dtup[s]
+    FT = eltype(state)
+    _ρice = FT(ρ_cloud_ice(land.param_set))
+    return freeze_thaw / _ρice
 end

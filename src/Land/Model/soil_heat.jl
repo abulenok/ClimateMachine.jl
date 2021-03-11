@@ -194,22 +194,15 @@ function compute_gradient_flux!(
         thermal_conductivity(κ_dry, kersten, κ_sat) * ∇transform.soil.heat.T
 end
 
-function flux_second_order!(
-    land::LandModel,
-    soil::SoilModel,
-    heat::SoilHeatModel,
-    flux::Grad,
-    state::Vars,
-    diffusive::Vars,
-    hyperdiffusive::Vars,
-    aux::Vars,
-    t::Real,
-)
+struct DiffHeatFlux <: TendencyDef{Flux{SecondOrder}} end
+struct DiffWaterFlux <: TendencyDef{Flux{SecondOrder}} end
+
+function flux(::InternalEnergy, ::DiffHeatFlux, ::LandModel, args)
+    return -args.diffusive.soil.heat.κ∇T
+end
+
+function flux(::InternalEnergy, ::DiffWaterFlux, ::LandModel, args)
     param_set = parameter_set(land)
     ρe_int_l = volumetric_internal_energy_liq(aux.soil.heat.T, param_set)
-    diffusive_water_flux =
-        -ρe_int_l .* get_diffusive_water_term(soil.water, diffusive)
-    diffusive_heat_flux = -diffusive.soil.heat.κ∇T
-    flux.soil.heat.ρe_int += diffusive_heat_flux + diffusive_water_flux
-
+    return -ρe_int_l * diffusive.soil.water.K∇h
 end
