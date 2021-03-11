@@ -11,7 +11,7 @@ using Printf
 export @tic, @toc, tictoc
 
 # explicitly enable due to issues with pre-compilation
-const tictoc_enabled = false
+const tictoc_enabled = true
 
 # disable to reduce overhead
 const tictoc_track_memory = true
