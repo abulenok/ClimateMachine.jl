@@ -51,6 +51,7 @@ using ..BalanceLaws
 using ClimateMachine.Problems
 
 import ..BalanceLaws:
+    extract_sub_model,
     vars_state,
     projection,
     prognostic_vars,
@@ -542,6 +543,10 @@ include("linear_atmos_tendencies.jl")
 
 include("atmos_tendencies.jl")        # specify atmos tendencies
 include("get_prognostic_vars.jl")     # get tuple of prognostic variables
+
+extract_sub_model(atmos::AtmosModel, ::Type{AbstractParameterSet}) = atmos.physics.param_set
+extract_sub_model(atmos::AtmosModel, ::Type{MoistureModel}) = atmos.moisture
+extract_sub_model(atmos::AtmosModel, ::Type{AbstractEnergyModel}) = atmos.energy
 
 function precompute(atmos::AtmosModel, args, tt::Flux{FirstOrder})
     ts = recover_thermo_state(atmos, args.state, args.aux)

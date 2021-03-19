@@ -10,6 +10,12 @@ CurrentModule = ClimateMachine.BalanceLaws
 BalanceLaw
 ```
 
+## Interface
+
+```@docs
+extract_sub_model
+```
+
 ## Tendency types and methods
 
 ```@docs

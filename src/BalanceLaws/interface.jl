@@ -384,3 +384,11 @@ function cummulate_fast_solution! end
 function reconcile_from_fast_to_slow! end
 
 parameter_set(balance_law) = balance_law.param_set
+
+"""
+    extract_sub_model(::BalanceLaw, ::Type{SubModelComponent})
+
+Returns the instance of the submodel
+component for type `SubModelComponent`.
+"""
+function extract_sub_model end
