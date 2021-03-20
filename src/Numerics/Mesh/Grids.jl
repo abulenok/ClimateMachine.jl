@@ -829,6 +829,43 @@ function computegeometry_fvm(elemtocoord, D, ξ, ω, meshwarp)
     (vgeo, sgeo, x_vtk)
 end
 
+struct VolumeGeometry{Nq,A<:AbstractArray}
+    ξ1x1::A
+    ξ2x1::A
+    ξ3x1::A
+    ξ1x2::A
+    ξ2x2::A
+    ξ3x2::A
+    ξ1x3::A
+    ξ2x3::A
+    ξ3x3::A
+    MJ::A
+    MJI::A
+    MHJH::A
+    x1::A
+    x2::A
+    x3::A
+    JcV::A
+    function VolumeGeometry{Nq}(args::A...) where {Nq, A<:AbstractArray}
+        new{Nq,A}(args...)
+    end
+end
+
+"""
+    VolumeGeometry(FT, Nq::Tuple, nelems::Integer)
+
+Construct an empty `VolumeGeometry` object, in `FT` precision.
+- `Nq` is a tuple containing the number quadrature points in each direction.
+- `nelems` is the number of elements.
+"""
+function VolumeGeometry(FT, Nq::NTuple{N,Int}, nelem::Int) where {N}
+    array = zeros(FT, prod(Nq), fieldcount(VolumeGeometry), nelem)
+    VolumeGeometry{Nq}(ntuple(j -> @view(array[:, j, :]), fieldcount(VolumeGeometry))...)
+end
+
+
+
+
 function computegeometry(elemtocoord, D, ξ, ω, meshwarp)
     dim = length(D)
     nface = 2dim
@@ -846,27 +883,25 @@ function computegeometry(elemtocoord, D, ξ, ω, meshwarp)
 
     FT = eltype(D[1])
 
-    vgeo = zeros(FT, Np, _nvgeo, nelem)
+    #vgeo = zeros(FT, Np, _nvgeo, nelem)
+    vgeo = VolumeGeometry(FT, Nq, nelem)
+
+
     sgeo = zeros(FT, _nsgeo, maximum(Nfp), nface, nelem)
 
-    (
-        #! format: off
-        ξ1x1, ξ2x1, ξ3x1, ξ1x2, ξ2x2, ξ3x2, ξ1x3, ξ2x3, ξ3x3,
-        MJ, MJI, MHJH,
-        x1, x2, x3,
-        JcV,
-       #! format: on
-    ) = ntuple(j -> (@view vgeo[:, j, :]), _nvgeo)
-    J = similar(x1)
     (n1, n2, n3, sMJ, vMJI) = ntuple(j -> (@view sgeo[j, :, :, :]), _nsgeo)
     sJ = similar(sMJ)
 
+    # reference element -> topology coordinates
     X = ntuple(j -> (@view vgeo[:, _x1 + j - 1, :]), dim)
     Metrics.creategrid!(X..., elemtocoord, ξ...)
 
+    # topology coordinates -> physical coordinates
     @inbounds for j in 1:length(x1)
         (x1[j], x2[j], x3[j]) = meshwarp(x1[j], x2[j], x3[j])
     end
+
+    Metrics.computemetric!(vgeo, sgeo, D)
 
     # Compute the metric terms
     p = reshape(1:Np, Nq)
