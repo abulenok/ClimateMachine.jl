@@ -8,8 +8,8 @@ abstract type AbstractWaterModel <: AbstractSoilComponentModel end
 Model structure for a prescribed water content model.
 
 The user supplies functions of space and time for both `ϑ_l` and
-`θ_i`. No auxiliary or state variables are added, no PDE is solved. 
-The defaults are no moisture anywhere, for all time. 
+`θ_i`. No auxiliary or state variables are added, no PDE is solved.
+The defaults are no moisture anywhere, for all time.
 
 # Fields
 $(DocStringExtensions.FIELDS)
@@ -22,18 +22,16 @@ struct PrescribedWaterModel{FN1, FN2} <: AbstractWaterModel
 end
 
 """
-    function PrescribedWaterModel(
+    PrescribedWaterModel(
         ϑ_l::Function = (aux, t) -> eltype(aux)(0.0),
         θ_i::Function = (aux, t) -> eltype(aux)(0.0),
     )
-        args = (ϑ_l, θ_i)
-        return PrescribedWaterModel{typeof.(args)...}(args...)
-    end
+
 Outer constructor for the PrescribedWaterModel defining default values.
 
-The functions supplied by the user are point-wise evaluated and are 
+The functions supplied by the user are point-wise evaluated and are
 evaluated in the Balance Law functions compute_gradient_argument,
-nodal_update, etc. whenever the prescribed water content variables are 
+nodal_update, etc. whenever the prescribed water content variables are
 needed by the heat model.
 """
 function PrescribedWaterModel(
@@ -47,16 +45,16 @@ end
 """
     SoilWaterModel{FT, IF, VF, MF, HM, Fiϑl, Fiθi} <: AbstractWaterModel
 
-The necessary components for solving the equations for water (liquid or ice) in soil. 
+The necessary components for solving the equations for water (liquid or ice) in soil.
 
 Without freeze/thaw source terms added (separately), this model reduces to
-Richard's equation for liquid water. Note that the default for `θ_i` is zero. 
-Without freeze/thaw source terms added to both the liquid and ice equations, 
-the default should never be changed, because we do not enforce that the total 
+Richard's equation for liquid water. Note that the default for `θ_i` is zero.
+Without freeze/thaw source terms added to both the liquid and ice equations,
+the default should never be changed, because we do not enforce that the total
 volumetric water fraction is less than or equal to porosity otherwise.
 
 When freeze/thaw source terms are included, this model encompasses water in both
-liquid and ice form, and water content is conserved upon phase change. 
+liquid and ice form, and water content is conserved upon phase change.
 
 # Fields
 $(DocStringExtensions.FIELDS)
@@ -156,7 +154,7 @@ end
 
 
 """
-    function get_diffusive_water_term(
+    get_diffusive_water_term(
         water::SoilWaterModel,
         diffusive::Vars
     )
@@ -168,7 +166,7 @@ function get_diffusive_water_term(water::SoilWaterModel, diffusive::Vars)
 end
 
 """
-    function get_diffusive_water_term(
+    get_diffusive_water_term(
         water::PrescribedWaterModel,
         diffusive::Vars
     )

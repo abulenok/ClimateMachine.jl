@@ -53,7 +53,7 @@ function SoilHeatModel(::Type{FT}; initialT = (aux) -> FT(NaN)) where {FT}
 end
 
 """
-    function get_temperature(
+    get_temperature(
         heat::SoilHeatModel
         aux::Vars,
         t::Real
@@ -67,7 +67,7 @@ function get_temperature(heat::SoilHeatModel, aux::Vars, t::Real)
 end
 
 """
-    function get_temperature(
+    get_temperature(
         heat::PrescribedTemperatureModel,
         aux::Vars,
         t::Real
@@ -81,11 +81,11 @@ function get_temperature(heat::PrescribedTemperatureModel, aux::Vars, t::Real)
 end
 
 """
-    function get_initial_temperature(
+    get_initial_temperature(
         m::SoilHeatModel
         aux::Vars,
         t::Real
-    )    
+    )
 Returns the temperature from the SoilHeatModel.
 Needed for soil_init_aux! of SoilWaterModel.
 """
@@ -95,11 +95,11 @@ end
 
 
 """
-    function get_initial_temperature(
+    get_initial_temperature(
         m::PrescribedTemperatureModel,
         aux::Vars,
         t::Real
-    )    
+    )
 Returns the temperature from the prescribed model.
 Needed for soil_init_aux! of SoilWaterModel.
 """
