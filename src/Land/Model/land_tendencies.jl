@@ -2,7 +2,7 @@
 ##### Sources
 #####
 
-eq_tends(pv::PrognosticVariable, m::LandModel, tt::Source) =
+eq_tends(pv::AbstractPrognosticVariable, m::LandModel, tt::Source) =
     (m.source_dt[pv]...,)
 
 #####
