@@ -17,7 +17,8 @@ eq_tends(::PV, ::LandModel, ::Flux{FirstOrder}) where {PV} = ()
 #####
 
 # Empty by default
-eq_tends(pv::PV, land_submodel, ::Flux{SecondOrder}) where {PV <: PrognosticVariable} = ()
+eq_tends(pv::PV, ::AbstractSoilComponentModel, ::Flux{SecondOrder}) where {PV} =
+    ()
 
 eq_tends(pv::PV, land::LandModel, tt::Flux{SecondOrder}) where {PV} =
     (eq_tends(pv, land.soil.heat, tt)..., eq_tends(pv, land.soil.water, tt)...)
