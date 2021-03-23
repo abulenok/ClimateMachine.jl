@@ -300,4 +300,7 @@ end
 
 struct WaterDiffusion <: TendencyDef{Flux{SecondOrder}} end
 
-flux(::ϑLiquid, ::WaterDiffusion, ::LandModel, args) = -diffusive.soil.water.K∇h
+function flux(::ϑLiquid, ::WaterDiffusion, ::LandModel, args)
+    @unpack diffusive = args
+    return -diffusive.soil.water.K∇h
+end

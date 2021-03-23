@@ -197,11 +197,13 @@ end
 struct DiffHeatFlux <: TendencyDef{Flux{SecondOrder}} end
 struct DiffWaterFlux <: TendencyDef{Flux{SecondOrder}} end
 
-function flux(::InternalEnergy, ::DiffHeatFlux, ::LandModel, args)
-    return -args.diffusive.soil.heat.κ∇T
+function flux(::InternalEnergy, ::DiffHeatFlux, land::LandModel, args)
+    @unpack diffusive = args
+    return -diffusive.soil.heat.κ∇T
 end
 
-function flux(::InternalEnergy, ::DiffWaterFlux, ::LandModel, args)
+function flux(::InternalEnergy, ::DiffWaterFlux, land::LandModel, args)
+    @unpack aux, diffusive = args
     param_set = parameter_set(land)
     ρe_int_l = volumetric_internal_energy_liq(aux.soil.heat.T, param_set)
     return -ρe_int_l * diffusive.soil.water.K∇h
