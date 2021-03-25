@@ -210,7 +210,7 @@ The `direction` argument is used to control if the filter is applied in the
             l_aux[s] = state_auxiliary[ijk, s, e]
         end
 
-         # Load mass weighted quantities to shared memory
+         # Load mass matrix and pre-filtered mass weighted quantities to shared memory
          s_M[ijk] = vgeo[ijk, _M, e]
          @unroll for s in 1:nstates
              s_MQᴮ[ijk, s] = s_M[ijk] * l_Q[s]
