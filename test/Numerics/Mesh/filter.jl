@@ -109,6 +109,44 @@ ClimateMachine.init()
         @test filter.filter_matrices[1] ≈ W1
         @test filter.filter_matrices[2] ≈ W2
     end
+
+    let
+        T = Float64
+        N = (5, 3)
+        Nc = (4, 2)
+
+        topology = ClimateMachine.Mesh.Topologies.BrickTopology(
+            MPI.COMM_SELF,
+            -1.0:2.0:1.0,
+        )
+        grid = ClimateMachine.Mesh.Grids.DiscontinuousSpectralElementGrid(
+            topology;
+            polynomialorder = N,
+            FloatType = T,
+            DeviceArray = Array,
+        )
+
+        ξ = ClimateMachine.Mesh.Grids.referencepoints(grid)
+        ξ1 = ξ[1]
+        ξ2 = ξ[2]
+        a1, b1 = GaussQuadrature.legendre_coefs(T, N[1])
+        a2, b2 = GaussQuadrature.legendre_coefs(T, N[2])
+        V1 = GaussQuadrature.orthonormal_poly(ξ1, a1, b1)
+        V2 = GaussQuadrature.orthonormal_poly(ξ2, a2, b2)
+
+        Σ1 = ones(T, N[1] + 1)
+        Σ2 = ones(T, N[2] + 1)
+        Σ1[(Nc[1]:N[1]) .+ 1] .= 0
+        Σ2[(Nc[2]:N[2]) .+ 1] .= 0
+
+        W1 = V1 * Diagonal(Σ1) / V1
+        W2 = V2 * Diagonal(Σ2) / V2
+
+        filter = ClimateMachine.Mesh.Filters.MassPreservingCutoffFilter(grid, Nc)
+        @test filter.filter_matrices[1] ≈ W1
+        @test filter.filter_matrices[2] ≈ W2
+    end
+
 end
 
 struct FilterTestModel{N} <: ClimateMachine.BalanceLaws.BalanceLaw end
@@ -185,6 +223,72 @@ end
                     )
 
                 filter = ClimateMachine.Mesh.Filters.CutoffFilter(grid, 2)
+
+                model = FilterTestModel{4}()
+                dg = ClimateMachine.DGMethods.DGModel(
+                    model,
+                    grid,
+                    nothing,
+                    nothing,
+                    nothing;
+                    state_gradient_flux = nothing,
+                )
+
+                @testset for target in ((1, 3), (:q1, :q3))
+                    Q = ClimateMachine.DGMethods.init_ode_state(
+                        dg,
+                        nothing,
+                        dim,
+                    )
+                    ClimateMachine.Mesh.Filters.apply!(
+                        Q,
+                        target,
+                        grid,
+                        filter,
+                        direction = direction(),
+                    )
+                    P = ClimateMachine.DGMethods.init_ode_state(
+                        dg,
+                        direction(),
+                        dim,
+                    )
+                    @test Array(Q.data) ≈ Array(P.data)
+                end
+            end
+        end
+    end
+end
+
+@testset "Mass Preserving Cutoff filter application" begin
+    N = 3
+    Ne = (1, 1, 1)
+
+    @testset for FT in (Float64, Float32)
+        @testset for dim in 2:3
+            @testset for direction in (
+                EveryDirection,
+                HorizontalDirection,
+                VerticalDirection,
+            )
+                brickrange = ntuple(
+                    j -> range(FT(-1); length = Ne[j] + 1, stop = 1),
+                    dim,
+                )
+                topl = ClimateMachine.Mesh.Topologies.BrickTopology(
+                    MPI.COMM_WORLD,
+                    brickrange,
+                    periodicity = ntuple(j -> true, dim),
+                )
+
+                grid =
+                    ClimateMachine.Mesh.Grids.DiscontinuousSpectralElementGrid(
+                        topl,
+                        FloatType = FT,
+                        DeviceArray = ClimateMachine.array_type(),
+                        polynomialorder = N,
+                    )
+
+                filter = ClimateMachine.Mesh.Filters.MassPreservingCutoffFilter(grid, 2)
 
                 model = FilterTestModel{4}()
                 dg = ClimateMachine.DGMethods.DGModel(
