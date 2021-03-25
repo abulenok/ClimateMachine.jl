@@ -308,7 +308,7 @@ The `direction` argument is used to control if the filter is applied in the
         end
 
         @synchronize
-        M⁻¹ = FT(1) / s_M[1]
+        M⁻¹ = 1 / s_M[1]
         @unroll for s in 1:nstates
             Q[ijk, s, e] = l_Q[s] + M⁻¹ * (s_MQᴮ[1, s] - s_MQᴬ[1, s])
         end
