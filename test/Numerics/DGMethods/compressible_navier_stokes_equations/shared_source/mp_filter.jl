@@ -287,7 +287,7 @@ The `direction` argument is used to control if the filter is applied in the
             Vars{vars_state_filtered(target, FT)}(p_Qfiltered[:]),
             Vars{vars_state_auxiliary}(p_aux[:]),
         )
-        # Store result
+        # Store result and post-filtered mass weighted quantities
         @unroll for s in 1:nstates
             p_Q[s] = u_Q[s]
             l_MQᴬ[ijk, s] = l_M[ijk] * p_Q[s]
