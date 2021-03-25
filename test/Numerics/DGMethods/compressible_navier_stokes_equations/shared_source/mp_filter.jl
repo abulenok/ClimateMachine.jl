@@ -276,6 +276,7 @@ The `direction` argument is used to control if the filter is applied in the
             end
         end
 
+        # work around for not being able to `Vars` `@private` arrays
         @unroll for s in 1:nstates
             l_Q2[s] = l_Q[s]
         end
