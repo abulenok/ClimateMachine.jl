@@ -26,9 +26,9 @@ end
 
 abstract type AbstractMassPreservingSpectralFilter <: AbstractSpectralFilter end
 """
-    CutoffFilter(grid, Nc=polynomialorders(grid))
+    MassPreservingCutoffFilter(grid, Nc=polynomialorders(grid))
 Returns the spectral filter that zeros out polynomial modes greater than or
-equal to `Nc`.
+equal to `Nc` while preserving the cell average value.
 """
 struct MassPreservingCutoffFilter{FM} <: AbstractMassPreservingSpectralFilter
     "filter matrices in all directions (tuple of filter matrices)"
@@ -183,18 +183,18 @@ The `direction` argument is used to control if the filter is applied in the
 
         # ugly workaround around problems with @private
         # hopefully will be soon fixed in KA
-        l_Q2 = MVector{nstates, FT}(undef)
-        l_Qfiltered2 = MVector{nfilterstates, FT}(undef)
+        u_Q = MVector{nstates, FT}(undef)
+        u_Qfiltered = MVector{nfilterstates, FT}(undef)
     end
 
-    s_Q = @localmem FT (Nq1, Nq2, Nq3, nfilterstates) # element local 
-    s_MQᴮ = @localmem FT (Nq1 * Nq2 * Nq3, nstates) # before applying filter
-    s_MQᴬ = @localmem FT (Nq1 * Nq2 * Nq3, nstates) # after applying filter
-    s_M  = @localmem FT (Nq1 * Nq2 * Nq3) # local mass matrix
+    l_Q = @localmem FT (Nq1, Nq2, Nq3, nfilterstates) # element local 
+    l_MQᴮ = @localmem FT (Nq1 * Nq2 * Nq3, nstates) # before applying filter
+    l_MQᴬ = @localmem FT (Nq1 * Nq2 * Nq3, nstates) # after applying filter
+    l_M  = @localmem FT (Nq1 * Nq2 * Nq3) # local mass matrix
 
-    l_Q = @private FT (nstates,)
-    l_Qfiltered = @private FT (nfilterstates,) # scratch space for storing mat mul
-    l_aux = @private FT (nfilteraux,)
+    p_Q = @private FT (nstates,)
+    p_Qfiltered = @private FT (nfilterstates,) # scratch space for storing mat mul
+    p_aux = @private FT (nfilteraux,)
 
     e = @index(Group, Linear)
     i, j, k = @index(Local, NTuple)
@@ -203,49 +203,49 @@ The `direction` argument is used to control if the filter is applied in the
     @inbounds begin
 
         @unroll for s in 1:nstates
-            l_Q[s] = Q[ijk, s, e]
+            p_Q[s] = Q[ijk, s, e]
         end
 
         @unroll for s in 1:nfilteraux
-            l_aux[s] = state_auxiliary[ijk, s, e]
+            p_aux[s] = state_auxiliary[ijk, s, e]
         end
 
          # Load mass matrix and pre-filtered mass weighted quantities to shared memory
-         s_M[ijk] = vgeo[ijk, _M, e]
+         l_M[ijk] = vgeo[ijk, _M, e]
          @unroll for s in 1:nstates
-             s_MQᴮ[ijk, s] = s_M[ijk] * l_Q[s]
+             l_MQᴮ[ijk, s] = l_M[ijk] * p_Q[s]
          end
 
-        fill!(l_Qfiltered2, -zero(FT))
+        fill!(u_Qfiltered, -zero(FT))
 
         compute_filter_argument!(
             target,
-            Vars{vars_state_filtered(target, FT)}(l_Qfiltered2),
-            Vars{vars_Q}(l_Q[:]),
-            Vars{vars_state_auxiliary}(l_aux[:]),
+            Vars{vars_state_filtered(target, FT)}(u_Qfiltered),
+            Vars{vars_Q}(p_Q[:]),
+            Vars{vars_state_auxiliary}(p_aux[:]),
         )
 
         @unroll for fs in 1:nfilterstates
-            l_Qfiltered[fs] = zero(FT)
+            p_Qfiltered[fs] = zero(FT)
         end
 
         @unroll for fs in 1:nfilterstates
-            s_Q[i, j, k, fs] = l_Qfiltered2[fs]
+            l_Q[i, j, k, fs] = u_Qfiltered[fs]
         end
 
         if filterinξ1
             @synchronize
             @unroll for n in 1:Nq1
                 @unroll for fs in 1:nfilterstates
-                    l_Qfiltered[fs] += filtermatrix[i, n] * s_Q[n, j, k, fs]
+                    p_Qfiltered[fs] += filtermatrix[i, n] * l_Q[n, j, k, fs]
                 end
             end
 
             if filterinξ2 || filterinξ3
                 @synchronize
                 @unroll for fs in 1:nfilterstates
-                    s_Q[i, j, k, fs] = l_Qfiltered[fs]
-                    l_Qfiltered[fs] = zero(FT)
+                    l_Q[i, j, k, fs] = p_Qfiltered[fs]
+                    p_Qfiltered[fs] = zero(FT)
                 end
             end
         end
@@ -254,15 +254,15 @@ The `direction` argument is used to control if the filter is applied in the
             @synchronize
             @unroll for n in 1:Nq2
                 @unroll for fs in 1:nfilterstates
-                    l_Qfiltered[fs] += filtermatrix[j, n] * s_Q[i, n, k, fs]
+                    p_Qfiltered[fs] += filtermatrix[j, n] * l_Q[i, n, k, fs]
                 end
             end
 
             if filterinξ3
                 @synchronize
                 @unroll for fs in 1:nfilterstates
-                    s_Q[i, j, k, fs] = l_Qfiltered[fs]
-                    l_Qfiltered[fs] = zero(FT)
+                    l_Q[i, j, k, fs] = p_Qfiltered[fs]
+                    p_Qfiltered[fs] = zero(FT)
                 end
             end
         end
@@ -271,26 +271,26 @@ The `direction` argument is used to control if the filter is applied in the
             @synchronize
             @unroll for n in 1:Nq3
                 @unroll for fs in 1:nfilterstates
-                    l_Qfiltered[fs] += filtermatrix[k, n] * s_Q[i, j, n, fs]
+                    p_Qfiltered[fs] += filtermatrix[k, n] * l_Q[i, j, n, fs]
                 end
             end
         end
 
         # work around for not being able to `Vars` `@private` arrays
         @unroll for s in 1:nstates
-            l_Q2[s] = l_Q[s]
+            u_Q[s] = p_Q[s]
         end
 
         compute_filter_result!(
             target,
-            Vars{vars_Q}(l_Q2),
-            Vars{vars_state_filtered(target, FT)}(l_Qfiltered[:]),
-            Vars{vars_state_auxiliary}(l_aux[:]),
+            Vars{vars_Q}(u_Q),
+            Vars{vars_state_filtered(target, FT)}(p_Qfiltered[:]),
+            Vars{vars_state_auxiliary}(p_aux[:]),
         )
         # Store result
         @unroll for s in 1:nstates
-            l_Q[s] = l_Q2[s]
-            s_MQᴬ[ijk, s] = s_M[ijk] * l_Q[s]
+            p_Q[s] = u_Q[s]
+            l_MQᴬ[ijk, s] = l_M[ijk] * p_Q[s]
         end
 
         @synchronize
@@ -298,10 +298,10 @@ The `direction` argument is used to control if the filter is applied in the
             if nreduce ≥ (1 << n)     
                 ijkshift = ijk + (1 << (n - 1))
                 if ijk ≤ (1 << (n - 1)) && ijkshift ≤ Nq1 * Nq2 * Nq3
-                    s_M[ijk] += s_M[ijkshift]
+                    l_M[ijk] += l_M[ijkshift]
                     @unroll for s in 1:nstates
-                        s_MQᴮ[ijk, s] += s_MQᴮ[ijkshift, s]
-                        s_MQᴬ[ijk, s] += s_MQᴬ[ijkshift, s]
+                        l_MQᴮ[ijk, s] += l_MQᴮ[ijkshift, s]
+                        l_MQᴬ[ijk, s] += l_MQᴬ[ijkshift, s]
                     end
                 end
                 @synchronize
@@ -309,10 +309,10 @@ The `direction` argument is used to control if the filter is applied in the
         end
 
         @synchronize
-        M⁻¹ = 1 / s_M[1]
+        M⁻¹ = 1 / l_M[1]
         # Reset the element average and store result
         @unroll for s in 1:nstates
-            Q[ijk, s, e] = l_Q[s] + M⁻¹ * (s_MQᴮ[1, s] - s_MQᴬ[1, s])
+            Q[ijk, s, e] = p_Q[s] + M⁻¹ * (l_MQᴮ[1, s] - l_MQᴬ[1, s])
         end
 
         @synchronize
