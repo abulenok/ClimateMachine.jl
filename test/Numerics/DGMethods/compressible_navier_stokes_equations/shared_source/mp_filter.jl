@@ -310,6 +310,7 @@ The `direction` argument is used to control if the filter is applied in the
 
         @synchronize
         M⁻¹ = 1 / s_M[1]
+        # Reset the element average and store result
         @unroll for s in 1:nstates
             Q[ijk, s, e] = l_Q[s] + M⁻¹ * (s_MQᴮ[1, s] - s_MQᴬ[1, s])
         end
