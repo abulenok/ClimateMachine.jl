@@ -142,7 +142,8 @@ ClimateMachine.init()
         W1 = V1 * Diagonal(Σ1) / V1
         W2 = V2 * Diagonal(Σ2) / V2
 
-        filter = ClimateMachine.Mesh.Filters.MassPreservingCutoffFilter(grid, Nc)
+        filter =
+            ClimateMachine.Mesh.Filters.MassPreservingCutoffFilter(grid, Nc)
         @test filter.filter_matrices[1] ≈ W1
         @test filter.filter_matrices[2] ≈ W2
     end
@@ -288,7 +289,10 @@ end
                         polynomialorder = N,
                     )
 
-                filter = ClimateMachine.Mesh.Filters.MassPreservingCutoffFilter(grid, 2)
+                filter = ClimateMachine.Mesh.Filters.MassPreservingCutoffFilter(
+                    grid,
+                    2,
+                )
 
                 model = FilterTestModel{4}()
                 dg = ClimateMachine.DGMethods.DGModel(

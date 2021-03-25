@@ -144,12 +144,12 @@ function modified_filter_matrix(r, Nc, σ)
     T = eltype(r)
 
     @assert N >= 0
-    @assert 0 <= Nc 
+    @assert 0 <= Nc
 
     a, b = GaussQuadrature.legendre_coefs(T, N)
     V = (N == 0 ? ones(T, 1, 1) : GaussQuadrature.orthonormal_poly(r, a, b))
 
-    Σ = ones(T, N + 1) 
+    Σ = ones(T, N + 1)
     if Nc ≤ N
         Σ[(Nc:N) .+ 1] .= σ.(((Nc:N) .- Nc) ./ (N - Nc))
     end
@@ -332,7 +332,7 @@ struct MassPreservingCutoffFilter{FM} <: AbstractSpectralFilter
         N = polynomialorders(grid)
         # In 2D, we assume same polynomial order in the horizontal
         @assert dim == 2 || N[1] == N[2]
-        @assert all(0 .<= Nc )
+        @assert all(0 .<= Nc)
 
         σ(η) = 0
 
@@ -561,7 +561,7 @@ function apply_async!(
 
     nrealelem = length(topology.realelems)
     # parallel sum info
-    nreduce = 2^ceil(Int, log2(Nq1 * Nq2 * Nq3)) 
+    nreduce = 2^ceil(Int, log2(Nq1 * Nq2 * Nq3))
     event = dependencies
 
     if direction isa EveryDirection || direction isa HorizontalDirection
@@ -889,7 +889,7 @@ end
 Computational kernel: Applies the `filtermatrix` to `Q` given a
 custom target `target`.
 The `direction` argument is used to control if the filter is applied in the
-""" 
+"""
 @kernel function kernel_apply_mp_filter!(
     ::Val{nreduce},
     ::Val{dim},
@@ -938,7 +938,7 @@ The `direction` argument is used to control if the filter is applied in the
     l_Q = @localmem FT (Nq1, Nq2, Nq3, nfilterstates) # element local 
     l_MQᴮ = @localmem FT (Nq1 * Nq2 * Nq3, nstates) # before applying filter
     l_MQᴬ = @localmem FT (Nq1 * Nq2 * Nq3, nstates) # after applying filter
-    l_M  = @localmem FT (Nq1 * Nq2 * Nq3) # local mass matrix
+    l_M = @localmem FT (Nq1 * Nq2 * Nq3) # local mass matrix
 
     p_Q = @private FT (nstates,)
     p_Qfiltered = @private FT (nfilterstates,) # scratch space for storing mat mul
@@ -958,11 +958,11 @@ The `direction` argument is used to control if the filter is applied in the
             p_aux[s] = state_auxiliary[ijk, s, e]
         end
 
-         # Load mass matrix and pre-filtered mass weighted quantities to shared memory
-         l_M[ijk] = vgeo[ijk, _M, e]
-         @unroll for s in 1:nstates
-             l_MQᴮ[ijk, s] = l_M[ijk] * p_Q[s]
-         end
+        # Load mass matrix and pre-filtered mass weighted quantities to shared memory
+        l_M[ijk] = vgeo[ijk, _M, e]
+        @unroll for s in 1:nstates
+            l_MQᴮ[ijk, s] = l_M[ijk] * p_Q[s]
+        end
 
         fill!(u_Qfiltered, -zero(FT))
 
@@ -1043,7 +1043,7 @@ The `direction` argument is used to control if the filter is applied in the
 
         @synchronize
         @unroll for n in 11:-1:1
-            if nreduce ≥ (1 << n)     
+            if nreduce ≥ (1 << n)
                 ijkshift = ijk + (1 << (n - 1))
                 if ijk ≤ (1 << (n - 1)) && ijkshift ≤ Nq1 * Nq2 * Nq3
                     l_M[ijk] += l_M[ijkshift]
