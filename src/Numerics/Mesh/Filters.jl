@@ -145,14 +145,14 @@ function modified_filter_matrix(r, Nc, σ)
 
     @assert N >= 0
     @assert 0 <= Nc
+    
+    Nc > N && return Array{T}(I, N+1, N+1)
 
     a, b = GaussQuadrature.legendre_coefs(T, N)
     V = (N == 0 ? ones(T, 1, 1) : GaussQuadrature.orthonormal_poly(r, a, b))
 
     Σ = ones(T, N + 1)
-    if Nc ≤ N
-        Σ[(Nc:N) .+ 1] .= σ.(((Nc:N) .- Nc) ./ (N - Nc))
-    end
+    Σ[(Nc:N) .+ 1] .= σ.(((Nc:N) .- Nc) ./ (N - Nc))
 
     V * Diagonal(Σ) / V
 end
