@@ -915,13 +915,27 @@ function computegeometry(elemtocoord, D, ξ, ω, meshwarp)
 
     # reference element -> topology coordinates
     X = ntuple(j -> (@view vgeo[:, _x1 + j - 1, :]), dim)
+
+    # 1) a function which
+
+
+    # TODO: pass `vgeo` here instead of `X`
+    # - split out (c),(d)
+    # - to get analytic derivatives, we need to be able differentiate through (a,b)
+    #   - combines (a,b,c)
+    #
+
+    # a) computes "topology coordinates"
     Metrics.creategrid!(X..., elemtocoord, ξ...)
 
-    # topology coordinates -> physical coordinates
+    # b) topology coordinates -> physical coordinates
     @inbounds for j in 1:length(x1)
         (vgeo.x1[j], vgeo.x2[j], vgeo.x3[j]) = meshwarp(vgeo.x1[j], vgeo.x2[j], vgeo.x3[j])
     end
 
+
+    # c) computes partial derivatives ∂x/∂ξ
+    # d) computes the metric terms
     Metrics.computemetric!(vgeo, sgeo, D...)
 
     # Compute the metric terms
@@ -966,42 +980,42 @@ function computegeometry(elemtocoord, D, ξ, ω, meshwarp)
     sgeo.sωMJ .= sM .* sgeo.sωJ
 
     # compute MH and JvC
-    horizontal_metrics(vgeo, Nq, ω)
+    horizontal_metrics!(vgeo, Nq, ω)
 
     # This is mainly done to support FVM plotting when N=0 (since we need cell
     # edge values)
     x_vtk = (vgeo.x1, vgeo.x2, vgeo.x3)
 
-    (vgeo, sgeo, x_vtk)
+    return (vgeo, sgeo, x_vtk)
 end
 
-function horizontal_metrics(vgeo, Nq, ω)
+"""
+    horizontal_metrics!(vgeo::VerticalGeometry, Nq, ω)
+
+Compute the horizontal mass matrix `ωJH` field of `vgeo`
+```
+J .* norm(∂ξ3/∂x) * (ωᵢ ⊗ ωⱼ); for integrating over a plane
+```
+(in 2-D ξ2 not ξ3 is used).
+"""
+function horizontal_metrics!(vgeo::VerticalGeometry, Nq, ω)
     dim = length(Nq)
 
     MH = dim == 1 ? 1 : kron(ones(1, Nq[dim]), reverse(ω[1:(dim - 1)])...)[:]
-    M = kron(1, reverse(ω)...)[:]
-
-    vgeo = VolumeGeometry(FT, Nq, nelem)
-    sgeo = SurfaceGeometry(FT, Nq, nface, nelem)
-    J = vgeo.ωJ ./ M[:]
+    M = vec(kron(1, reverse(ω)...))
+    J = vgeo.ωJ ./ M
 
     # Compute |r'(ξ3)| for vertical line integrals
     if dim == 1
         vgeo.ωJH .= 1
     elseif dim == 2
-        map!(vgeo.ωJH, J, vgeo.ξ2x1, vgeo.ξ2x2) do J, vgeo.ξ2x1, vgeo.ξ2x2
-            hypot(J * vgeo.ξ2x1, J * vgeo.ξ2x2)
-        end
-        vgeo.ωJH .= MH .* vgeo.ωJH
-
+        vgeo.ωJH .= MH .* hypot.(J .* vgeo.ξ2x1, J .* vgeo.ξ2x2)
     elseif dim == 3
-        map!(vgeo.ωJH, J, vgeo.ξ3x1, vgeo.ξ3x2, vgeo.ξ3x3) do J, vgeo.ξ3x1, vgeo.ξ3x2, vgeo.ξ3x3
-            hypot(J * vgeo.ξ3x1, J * vgeo.ξ3x2, J * vgeo.ξ3x3)
-        end
-        vgeo.ωJH .= MH .* vgeo.ωJH
+        vgeo.ωJH .= MH .* hypot.(J .* vgeo.ξ3x1, J .* vgeo.ξ3x2, J .* vgeo.ξ3x3)
     else
         error("dim $dim not implemented")
     end
+    return vgeo
 end
 
 """
