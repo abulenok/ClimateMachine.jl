@@ -914,19 +914,19 @@ function computegeometry(elemtocoord, D, ξ, ω, meshwarp)
     # sωJ = similar(sωJ)
 
     # reference element -> topology coordinates
-    X = ntuple(j -> (@view vgeo[:, _x1 + j - 1, :]), dim)
+    # X = ntuple(j -> (@view vgeo[:, _x1 + j - 1, :]), dim)
 
     # 1) a function which
 
 
-    # TODO: pass `vgeo` here instead of `X`
+    # TODO:
     # - split out (c),(d)
     # - to get analytic derivatives, we need to be able differentiate through (a,b)
     #   - combines (a,b,c)
     #
 
     # a) computes "topology coordinates"
-    Metrics.creategrid!(X..., elemtocoord, ξ...)
+    Metrics.creategrid!(vgeo, elemtocoord, ξ...)
 
     # b) topology coordinates -> physical coordinates
     @inbounds for j in 1:length(x1)

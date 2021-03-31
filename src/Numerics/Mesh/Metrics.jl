@@ -8,18 +8,18 @@ Create a 1-D grid using `elemtocoord` (see [`brickmesh`](@ref)) using the 1-D
 interpolation of the element coordinates.
 
 If `Nq = length(ξ1)` and `nelem = size(elemtocoord, 3)` then the preallocated
-array `x1` should be `Nq * nelem == length(x1)`.
+array `vgeo.x1` should be `Nq * nelem == length(x1)`.
 """
-function creategrid!(x1, e2c, ξ1)
+function creategrid!(vgeo::VolumeGeometry{NTuple{1,Int}, <:AbstractArray}, e2c, ξ1)
     (d, nvert, nelem) = size(e2c)
     @assert d == 1
     Nq = length(ξ1)
-    x1 = reshape(x1, (Nq, nelem))
+    vgeo.x1 = reshape(vgeo.x1, (Nq, nelem))
 
     # linear blend
     @inbounds for e in 1:nelem
         for i in 1:Nq
-            x1[i, e] =
+            vgeo.x1[i, e] =
                 ((1 - ξ1[i]) * e2c[1, 1, e] + (1 + ξ1[i]) * e2c[1, 2, e]) / 2
         end
     end
@@ -27,25 +27,25 @@ function creategrid!(x1, e2c, ξ1)
 end
 
 """
-    creategrid!(x1, x2, elemtocoord, ξ1, ξ2)
+    creategrid!(vgeo, elemtocoord, ξ1, ξ2)
 
 Create a 2-D tensor product grid using `elemtocoord` (see [`brickmesh`](@ref))
 using the 1-D `(-1, 1)` reference coordinates `ξ1` and `ξ2`. The element grids
 are filled using bilinear interpolation of the element coordinates.
 
 If `Nq = (length(ξ1), length(ξ2))` and `nelem = size(elemtocoord, 3)` then the
-preallocated arrays `x1` and `x2` should be
-`prod(Nq) * nelem == size(x1) == size(x2)`.
+preallocated arrays `vgeo.x1` and `vgeo.x2` should be
+`prod(Nq) * nelem == size(vgeo.x1) == size(vgeo.x2)`.
 """
-function creategrid!(x1, x2, e2c, ξ1, ξ2)
+function creategrid!(vgeo::VolumeGeometry{NTuple{2,Int}, <:AbstractArray}, e2c, ξ1, ξ2)
     (d, nvert, nelem) = size(e2c)
     @assert d == 2
     Nq = (length(ξ1), length(ξ2))
-    x1 = reshape(x1, (Nq..., nelem))
-    x2 = reshape(x2, (Nq..., nelem))
+    vgeo.x1 = reshape(vgeo.x1, (Nq..., nelem))
+    vgeo.x2 = reshape(vgeo.x2, (Nq..., nelem))
 
     # # bilinear blend of corners
-    @inbounds for (f, n) in zip((x1, x2), 1:d)
+    @inbounds for (f, n) in zip((vgeo.x1, vgeo.x2), 1:d)
         for e in 1:nelem, j in 1:Nq[2], i in 1:Nq[1]
             f[i, j, e] =
                 (
@@ -60,26 +60,26 @@ function creategrid!(x1, x2, e2c, ξ1, ξ2)
 end
 
 """
-    creategrid!(x1, x2, x3, elemtocoord, ξ1, ξ2, ξ3)
+    creategrid!(vgeo, elemtocoord, ξ1, ξ2, ξ3)
 
 Create a 3-D tensor product grid using `elemtocoord` (see [`brickmesh`](@ref))
 using the 1-D `(-1, 1)` reference coordinates `ξ1`. The element grids are filled
 using trilinear interpolation of the element coordinates.
 
 If `Nq = (length(ξ1), length(ξ2), length(ξ3))` and
-`nelem = size(elemtocoord, 3)` then the preallocated arrays `x1`, `x2`, and `x3`
-should be `prod(Nq) * nelem == size(x1) == size(x2) == size(x3)`.
+`nelem = size(elemtocoord, 3)` then the preallocated arrays `vgeo.x1`, `vgeo.x2`,
+and `vgeo.x3` should be `prod(Nq) * nelem == size(vgeo.x1) == size(vgeo.x2) == size(vgeo.x3)`.
 """
-function creategrid!(x1, x2, x3, e2c, ξ1, ξ2, ξ3)
+function creategrid!(vgeo::VolumeGeometry{NTuple{3,Int}, <:AbstractArray}, e2c, ξ1, ξ2, ξ3)
     (d, nvert, nelem) = size(e2c)
     @assert d == 3
     Nq = (length(ξ1), length(ξ2), length(ξ3))
-    x1 = reshape(x1, (Nq..., nelem))
-    x2 = reshape(x2, (Nq..., nelem))
-    x3 = reshape(x3, (Nq..., nelem))
+    vgeo.x1 = reshape(vgeo.x1, (Nq..., nelem))
+    vgeo.x2 = reshape(vgeo.x2, (Nq..., nelem))
+    vgeo.x3 = reshape(vgeo.x3, (Nq..., nelem))
 
     # trilinear blend of corners
-    @inbounds for (f, n) in zip((x1, x2, x3), 1:d)
+    @inbounds for (f, n) in zip((vgeo.x1, vgeo.x2, vgeo.x3), 1:d)
         for e in 1:nelem, k in 1:Nq[3], j in 1:Nq[2], i in 1:Nq[1]
             f[i, j, k, e] =
                 (
@@ -98,7 +98,7 @@ function creategrid!(x1, x2, x3, e2c, ξ1, ξ2, ξ3)
 end
 
 """
-    computemetric!(vgeo::VolumeGeometry{NTuple{1,Int}, <:AbstractArray}, sgeo::SurfaceGeometry{NTuple{1,Int}, <:AbstractArray}, D)
+    computemetric!(vgeo, sgeo, D)
 
 Input arguments:
 - vgeo::VolumeGeometry, a struct containing the volumetric geometric factors
@@ -140,7 +140,7 @@ function computemetric!(
 end
 
 """
-    computemetric!(vgeo::VolumeGeometry{NTuple{2,Int}, <:AbstractArray}, sgeo::SurfaceGeometry{NTuple{2,Int}, <:AbstractArray}, D1, D2)
+    computemetric!(vgeo, sgeo, D1, D2)
 
 Input arguments:
 - vgeo::VolumeGeometry, a struct containing the volumetric geometric factors
@@ -234,7 +234,7 @@ function computemetric!(
 end
 
 """
-    computemetric!(vgeo::VolumeGeometry{NTuple{3,Int}, <:AbstractArray}, sgeo::SurfaceGeometry{NTuple{3,Int}, <:AbstractArray}, D1, D2, D3)
+    computemetric!(vgeo, sgeo, D1, D2, D3)
 
 - vgeo::VolumeGeometry, a struct containing the volumetric geometric factors
 - sgeo::SurfaceGeometry, a struct containing the surface geometric factors
