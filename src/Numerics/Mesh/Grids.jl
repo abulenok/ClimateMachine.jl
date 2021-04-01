@@ -839,6 +839,15 @@ struct VolumeGeometry{Nq, A<:AbstractArray}
     ξ1x3::A
     ξ2x3::A
     ξ3x3::A
+    x1ξ1::A
+    x2ξ1::A
+    x3ξ1::A
+    x1ξ2::A
+    x2ξ2::A
+    x3ξ2::A
+    x1ξ3::A
+    x2ξ3::A
+    x3ξ3::A
     ωJ::A
     ωJI::A
     ωJH::A

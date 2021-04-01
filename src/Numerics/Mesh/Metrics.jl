@@ -98,6 +98,99 @@ function creategrid!(vgeo::VolumeGeometry{NTuple{3,Int}, <:AbstractArray}, e2c, 
 end
 
 """
+    compute_jacobian!(vgeo, D1)
+
+Input arguments:
+- vgeo::VolumeGeometry, a struct containing the volumetric geometric factors
+- D1::DAT2, 1-D derivative operator on the device in the first dimension
+
+Compute the Jacobian matrix of the transformation of physical coordinates,
+`vgeo.x1`, with respect to reference coordinates `ξ1`.
+"""
+function compute_jacobian!(
+    vgeo::VolumeGeometry{NTuple{1,Int}, <:AbstractArray},
+    D1
+)
+
+"""
+    compute_qpoint_jacobian!(vgeo, e, D1, D2)
+
+Input arguments:
+- vgeo::VolumeGeometry, a struct containing the volumetric geometric factors
+- (e, i, j)::NTuple{3,Int}, tuple of element indices
+- D1::DAT2, 1-D derivative operator on the device in the first dimension
+- D2::DAT2, 1-D derivative operator on the device in the second dimension
+
+Compute the Jacobian matrix of the transformation of physical coordinates,
+`vgeo.x1`, `vgeo.x2` with respect to reference coordinates `ξ1`, `ξ2`,
+for each quadrature point in element e.
+"""
+function compute_qpoint_jacobian!(
+    vgeo::VolumeGeometry{NTuple{2,Int}, <:AbstractArray},
+    (e, i, j),
+    D1,
+    D2
+)
+    T = eltype(vgeo.x1)
+    Nq = (size(D1, 1), size(D2, 1))
+
+    for n in 1:Nq[1]
+        vgeo.x1ξ1[i, j, e] += D1[i, n] * vgeo.x1[n, j, e]
+        vgeo.x2ξ1[i, j, e] += D1[i, n] * vgeo.x2[n, j, e]
+    end
+    for n in 1:Nq[2]
+        vgeo.x1ξ2[i, j, e] += D2[j, n] * vgeo.x1[i, n, e]
+        vgeo.x2ξ2[i, j, e] += D2[j, n] * vgeo.x2[i, n, e]
+    end
+
+    return vgeo
+end
+
+"""
+    compute_qpoint_jacobian!(vgeo, e, D1, D2, D3)
+
+Input arguments:
+- vgeo::VolumeGeometry, a struct containing the volumetric geometric factors
+- (e, i, j, k)::NTuple{4,Int}, tuple of element indices
+- D1::DAT2, 1-D derivative operator on the device in the first dimension
+- D2::DAT2, 1-D derivative operator on the device in the second dimension
+- D3::DAT2, 1-D derivative operator on the device in the third dimension
+
+Compute the Jacobian matrix of the transformation of physical coordinates,
+`vgeo.x1`, `vgeo.x2`, `vgeo.x3`, with respect to reference coordinates `ξ1`,
+`ξ2`, `ξ3`, for each quadrature point in element e.
+"""
+function compute_qpoint_jacobian!(
+    vgeo::VolumeGeometry{NTuple{3,Int}, <:AbstractArray},
+    (e, i, j, k),
+    D1,
+    D2,
+    D3
+)
+
+    T = eltype(vgeo.x1)
+    Nq = (size(D1, 1), size(D2, 1), size(D3, 1))
+
+    for n in 1:Nq[1]
+        vgeo.x1ξ1[i, j, k, e] += D1[i, n] * vgeo.x1[n, j, k, e]
+        vgeo.x2ξ1[i, j, k, e] += D1[i, n] * vgeo.x2[n, j, k, e]
+        vgeo.x3ξ1[i, j, k, e] += D1[i, n] * vgeo.x3[n, j, k, e]
+    end
+    for n in 1:Nq[2]
+        vgeo.x1ξ2[i, j, k, e] += D2[j, n] * vgeo.x1[i, n, k, e]
+        vgeo.x2ξ2[i, j, k, e] += D2[j, n] * vgeo.x2[i, n, k, e]
+        vgeo.x3ξ2[i, j, k, e] += D2[j, n] * vgeo.x3[i, n, k, e]
+    end
+    for n in 1:Nq[3]
+        vgeo.x1ξ3[i, j, k, e] += D3[k, n] * vgeo.x1[i, j, n, e]
+        vgeo.x2ξ3[i, j, k, e] += D3[k, n] * vgeo.x2[i, j, n, e]
+        vgeo.x3ξ3[i, j, k, e] += D3[k, n] * vgeo.x3[i, j, n, e]
+    end
+
+    return vgeo
+end
+
+"""
     computemetric!(vgeo, sgeo, D)
 
 Input arguments:
@@ -116,7 +209,8 @@ arrays `sJ` and `n1` should be of length `nface * nelem` with `nface = 2`.
 function computemetric!(
     vgeo::VolumeGeometry{NTuple{1,Int}, <:AbstractArray},
     sgeo::SurfaceGeometry{NTuple{1,Int}, <:AbstractArray},
-    D)
+    D
+)
 
     Nq = size(D, 1)
     nelem = div(length(vgeo.ωJ), Nq)
@@ -182,20 +276,17 @@ function computemetric!(
     sgeo.n2 = reshape(sgeo.n2, (maximum(Nfp), nface, nelem))
     sgeo.sωJ = reshape(sgeo.sωJ, (maximum(Nfp), nface, nelem))
 
+    vgeo.x1ξ1 .= vgeo.x1ξ2 .= zero(T)
+    vgeo.x2ξ1 .= vgeo.x2ξ2 .= zero(T)
+
     for e in 1:nelem
         for j in 1:Nq[2], i in 1:Nq[1]
-            vgeo.x1ξ1 = vgeo.x1ξ2 = zero(T)
-            vgeo.x2ξ1 = vgeo.x2ξ2 = zero(T)
-            for n in 1:Nq[1]
-                vgeo.x1ξ1 += D1[i, n] * vgeo.x1[n, j, e]
-                vgeo.x2ξ1 += D1[i, n] * vgeo.x2[n, j, e]
-            end
-            for n in 1:Nq[2]
-                vgeo.x1ξ2 += D2[j, n] * vgeo.x1[i, n, e]
-                vgeo.x2ξ2 += D2[j, n] * vgeo.x2[i, n, e]
-            end
+
+            compute_qpoint_jacobian!(vgeo, (e, i, j), D1, D2)
+
             vgeo.JcV[i, j, e] = hypot(vgeo.x1ξ2, vgeo.x2ξ2)
             vgeo.ωJ[i, j, e] = vgeo.x1ξ1 * vgeo.x2ξ2 - vgeo.x2ξ1 * vgeo.x1ξ2
+
             vgeo.ξ1x1[i, j, e] =  vgeo.x2ξ2 / vgeo.ωJ[i, j, e]
             vgeo.ξ2x1[i, j, e] = -vgeo.x2ξ1 / vgeo.ωJ[i, j, e]
             vgeo.ξ1x2[i, j, e] = -vgeo.x1ξ2 / vgeo.ωJ[i, j, e]
@@ -236,6 +327,7 @@ end
 """
     computemetric!(vgeo, sgeo, D1, D2, D3)
 
+Input arguments:
 - vgeo::VolumeGeometry, a struct containing the volumetric geometric factors
 - sgeo::SurfaceGeometry, a struct containing the surface geometric factors
 - D1::DAT2, 1-D derivative operator on the device in the first dimension
@@ -299,41 +391,24 @@ function computemetric!(
     (zxr, zxs, zxt) = (similar(JI2), similar(JI2), similar(JI2))
     (xyr, xys, xyt) = (similar(JI2), similar(JI2), similar(JI2))
 
-    vgeo.ξ1x1 .= zero(T)
-    vgeo.ξ2x1 .= zero(T)
-    vgeo.ξ3x1 .= zero(T)
-    vgeo.ξ1x2 .= zero(T)
-    vgeo.ξ2x2 .= zero(T)
-    vgeo.ξ3x2 .= zero(T)
-    vgeo.ξ1x3 .= zero(T)
-    vgeo.ξ2x3 .= zero(T)
-    vgeo.ξ3x3 .= zero(T)
+    vgeo.ξ1x1 .= vgeo.ξ2x1 .= vgeo.ξ3x1 .= zero(T)
+    vgeo.ξ1x2 .= vgeo.ξ2x2 .= vgeo.ξ3x2 .= zero(T)
+    vgeo.ξ1x3 .= vgeo.ξ2x3 .= vgeo.ξ3x3 .= zero(T)
 
     fill!(sgeo.n1, NaN)
     fill!(sgeo.n2, NaN)
     fill!(sgeo.n3, NaN)
     fill!(sgeo.sωJ, NaN)
 
+    vgeo.x1ξ1 .= vgeo.x1ξ2 .= vgeo.x1ξ3 .= zero(T)
+    vgeo.x2ξ1 .= vgeo.x2ξ2 .= vgeo.x2ξ3 .= zero(T)
+    vgeo.x3ξ1 .= vgeo.x3ξ2 .= vgeo.x3ξ3 .= zero(T)
+
     @inbounds for e in 1:nelem
         for k in 1:Nq[3], j in 1:Nq[2], i in 1:Nq[1]
-            vgeo.x1ξ1 = vgeo.x1ξ2 = vgeo.x1ξ3 = zero(T)
-            vgeo.x2ξ1 = vgeo.x2ξ2 = vgeo.x2ξ3 = zero(T)
-            vgeo.x3ξ1 = vgeo.x3ξ2 = vgeo.x3ξ3 = zero(T)
-            for n in 1:Nq[1]
-                vgeo.x1ξ1 += D1[i, n] * vgeo.x1[n, j, k, e]
-                vgeo.x2ξ1 += D1[i, n] * vgeo.x2[n, j, k, e]
-                vgeo.x3ξ1 += D1[i, n] * vgeo.x3[n, j, k, e]
-            end
-            for n in 1:Nq[2]
-                vgeo.x1ξ2 += D2[j, n] * vgeo.x1[i, n, k, e]
-                vgeo.x2ξ2 += D2[j, n] * vgeo.x2[i, n, k, e]
-                vgeo.x3ξ2 += D2[j, n] * vgeo.x3[i, n, k, e]
-            end
-            for n in 1:Nq[3]
-                vgeo.x1ξ3 += D3[k, n] * vgeo.x1[i, j, n, e]
-                vgeo.x2ξ3 += D3[k, n] * vgeo.x2[i, j, n, e]
-                vgeo.x3ξ3 += D3[k, n] * vgeo.x3[i, j, n, e]
-            end
+
+            compute_qpoint_jacobian!(vgeo, (e, i, j, k), D1, D2, D3)
+
             vgeo.JcV[i, j, k, e] = hypot(vgeo.x1ξ3, vgeo.x2ξ3, vgeo.x3ξ3)
             J[i, j, k, e] = (
                 vgeo.x1ξ1 * (vgeo.x2ξ2 * vgeo.x3ξ3 - vgeo.x3ξ2 * vgeo.x2ξ3) +
