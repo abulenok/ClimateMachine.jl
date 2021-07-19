@@ -1,4 +1,9 @@
 include("KinematicModel.jl")
+include("../../../../src/PySDMCall/PySDMCallback.jl")
+
+using .PySDMCall
+
+using StaticArrays
 
 function vars_state(m::KinematicModel, ::Prognostic, FT)
     @vars begin
@@ -18,10 +23,10 @@ function vars_state(m::KinematicModel, ::Auxiliary, FT)
         # defined in update_aux
         u::FT
         w::FT
-        q_tot::FT
-        q_vap::FT
-        q_liq::FT
-        q_ice::FT
+        q_tot::FT # total water specific humidity
+        q_vap::FT # water vapor specific humidity
+        q_liq::FT # cloud water specific humidity
+        q_ice::FT # cloud ice   specific humidity
         e_tot::FT
         e_kin::FT
         e_pot::FT
@@ -47,6 +52,10 @@ function init_kinematic_eddy!(eddy_model, state, aux, localgeo, t)
         T::FT = dc.θ_0 * (aux.p / dc.p_1000)^(R_m / cp_m)
         ρ::FT = aux.p / R_m / T
         state.ρ = ρ
+        
+
+        # R_m 288.31131120772176
+        
 
         # moisture
         state.ρq_tot = ρ * dc.qt_0
@@ -96,7 +105,7 @@ function nodal_update_auxiliary_state!(
         q = PhasePartition(ts)
 
         aux.T = ts.T
-        aux.q_vap = vapor_specific_humidity(q)
+        aux.q_vap = vapor_specific_humidity(q) # zmienne w przestrzeni 
         aux.q_liq = q.liq
         aux.q_ice = q.ice
 
@@ -164,7 +173,7 @@ function main()
     # Working precision
     FT = Float64
     # DG polynomial order
-    N = 4
+    N = 4 # 1 2 normal cells
     # Domain resolution and size
     Δx = FT(20)
     Δy = FT(1)
@@ -185,9 +194,9 @@ function main()
     # time stepping
     t_ini = FT(0)
     t_end = FT(60 * 30)
-    dt = 40
+    dt = 10 # was 40
     output_freq = 9
-    interval = "9steps"
+    interval = "90steps"
 
     # periodicity and boundary numbers
     periodicity_x = true
@@ -287,8 +296,53 @@ function main()
             driver_config.name,
             interpol = interpol,
         ),
+        
     ]
     dgn_config = ClimateMachine.DiagnosticsConfiguration(dgngrps)
+
+    
+    # configuring PySDM
+    # TODO kernel here !!!!!!!! done?
+    krnl = PySDMKernels()
+
+    spectra = PySDMSpectra()
+
+    rho_STP = 1.2252141358659048
+    micrometre = 1e-6
+    centimetre = 0.01
+    spectrum_per_mass_of_dry_air = spectra.Lognormal(
+                                                norm_factor=60 / centimetre ^ 3 / rho_STP,
+                                                m_mode=0.04 * micrometre,
+                                                s_geom=1.4
+                                            )
+
+    pysdmconf = PySDMConf(
+                        (Int(xmax/Δx), Int(zmax/Δz)), 
+                        (xmax, zmax), 
+                        (Δx, Δz), 
+                        t_end, 
+                        solver_config.dt, 
+                        25, 
+                        1, 
+                        krnl.Geometric(collection_efficiency=1), 
+                        spectrum_per_mass_of_dry_air
+                    ) #???? 
+
+    testcb = GenericCallbacks.EveryXSimulationSteps(PySDMCallback("PySDMCallback", 
+                                                                  solver_config.dg, 
+                                                                  interpol, 
+                                                                  mpicomm, 
+                                                                  pysdmconf
+                                                                  ), 1)
+
+    #testcb = GenericCallbacks.EveryXSimulationSteps(PySDMCallback("PySDMCallback", 
+    #                                                              solver_config.dg, 
+    #                                                              interpol, 
+    #                                                              mpicomm, 
+    #                                                              solver_config.dt, 
+    #                                                              Δx,
+    #                                                              t_end,
+    #                                                              nothing), 1)
 
     # get aux variables indices for testing
     q_tot_ind = varsindex(vars_state(model, Auxiliary(), FT), :q_tot)
@@ -301,7 +355,7 @@ function main()
     result = ClimateMachine.invoke!(
         solver_config;
         diagnostics_config = dgn_config,
-        user_callbacks = (cbvtk,),
+        user_callbacks = (cbvtk, testcb,),
         check_euclidean_distance = true,
     )
 

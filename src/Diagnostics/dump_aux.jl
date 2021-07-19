@@ -57,6 +57,14 @@ function dump_aux_collect(dgngrp, currtime)
 
     if mpirank == 0
         auxnames = flattenednames(vars_state(bl, Auxiliary(), FT))
+
+        println("DUMP AUX: AUX NAMES")
+        println(auxnames)
+        println("DUMP AUX: ALL AUX DATA TYPE")
+        println(typeof(all_aux_data))
+        println("DUMP AUX: ALL AUX DATA SIZE")
+        println(size(all_aux_data))
+
         varvals = OrderedDict()
         for (vari, varname) in enumerate(auxnames)
             varvals[varname] = all_aux_data[:, :, :, vari]

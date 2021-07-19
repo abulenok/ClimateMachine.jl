@@ -65,7 +65,7 @@
 # specific to atmospheric and ocean flow modeling.
 
 using ClimateMachine
-ClimateMachine.init()
+ClimateMachine.init(parse_clargs = true)
 using ClimateMachine.Atmos
 using ClimateMachine.Orientations
 using ClimateMachine.ConfigTypes
@@ -260,14 +260,44 @@ end
 
 # ## [Diagnostics](@id config_diagnostics)
 # Here we define the diagnostic configuration specific to this problem.
-function config_diagnostics(driver_config)
-    interval = "10000steps"
+function config_diagnostics(driver_config)    
+    interval = "10steps"
     dgngrp = setup_atmos_default_diagnostics(
         AtmosLESConfigType(),
         interval,
         driver_config.name,
     )
-    return ClimateMachine.DiagnosticsConfiguration([dgngrp])
+
+    FT = Float64
+    boundaries = [
+        FT(0.0) FT(0.0) FT(0.0)
+        FT(10000) FT(500) FT(10000)
+    ]
+    resolution = (FT(125), FT(125), FT(125))
+    interpol = ClimateMachine.InterpolationConfiguration(
+        driver_config,
+        boundaries,
+        resolution,
+    )
+    state_dgngrp = setup_dump_state_diagnostics(
+        AtmosLESConfigType(),
+        interval,
+        driver_config.name,
+        interpol = interpol,
+    )
+    aux_dgngrp = setup_dump_aux_diagnostics(
+        AtmosLESConfigType(),
+        interval,
+        driver_config.name,
+        interpol = interpol,
+    )
+    pysdm_dgngrp = setup_dump_pysdm_vars(
+        AtmosLESConfigType(),
+        interval,
+        driver_config.name,
+        interpol = interpol,
+    )
+    return ClimateMachine.DiagnosticsConfiguration([dgngrp, state_dgngrp, aux_dgngrp, pysdm_dgngrp])
 end
 
 function main()
@@ -307,6 +337,7 @@ function main()
         Courant_number = CFL,
     )
     dgn_config = config_diagnostics(driver_config)
+    println("KOOOOOOOOORTOOOOOORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR")
 
     ## Invoke solver (calls `solve!` function for time-integrator), pass the driver,
     ## solver and diagnostic config information.

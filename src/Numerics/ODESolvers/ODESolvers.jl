@@ -13,6 +13,8 @@ using ..SystemSolvers
 using ..MPIStateArrays: array_device, realview
 using ..GenericCallbacks
 
+using ..MPIStateArrays
+
 export AbstractODESolver, solve!, updatedt!, gettime, getsteps
 
 abstract type AbstractODESolver end
@@ -62,6 +64,16 @@ function general_dostep!(
         final_step = true
     end
     @assert dt > 0
+"""
+    println("TESTING ++++++++++++++++++++++++++")
+    println(vars(Q)) #### added by me
+    println("Size Q")
+    println(size(Q))
+    println("Rho")
+    println(size(MPIStateArrays.getstateview(Q, "ρ")))
+    println("Rho U")
+    println(size(MPIStateArrays.getstateview(Q, "ρu")))
+"""
 
     dostep!(Q, solver, p, time)
 

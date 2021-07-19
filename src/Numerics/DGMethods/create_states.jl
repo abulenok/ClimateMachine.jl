@@ -24,6 +24,12 @@ function create_state(
         # Since the names do not match the storage we do not set them
         V = @vars()
     end
+
+    println("CREATE STATE number_states")
+    println(ns)
+    println("CREATE STATE vars_state")
+    println(V)
+
     state = MPIStateArray{FT, V}(
         topology.mpicomm,
         DA,

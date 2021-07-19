@@ -680,6 +680,17 @@ function invoke!(
     dg = solver_config.dg
     bl = dg.balance_law
     Q = solver_config.Q
+
+    println("TESTING ++++++++++++++++++++++++++")
+    println(vars(Q)) #### added by me
+    println("Size Q")
+    println(size(Q))
+    println("Rho")
+    println(size(MPIStateArrays.getstateview(Q, "ρ")))
+    println("Rho U")
+    println(size(MPIStateArrays.getstateview(Q, "ρu")))
+
+
     FT = eltype(Q)
     timeend = solver_config.timeend
     init_on_cpu = solver_config.init_on_cpu
@@ -744,7 +755,7 @@ function invoke!(
     end
 
     # vtk callback
-    cb_vtk = Callbacks.vtk(
+    cb_vtk = Callbacks.vtk( # create callback func and add it to callbacks list
         Settings.vtk,
         solver_config,
         Settings.output_dir,

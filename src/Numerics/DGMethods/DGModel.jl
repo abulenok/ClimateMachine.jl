@@ -841,6 +841,15 @@ function init_ode_state(
     N = polynomialorders(grid)
     nrealelem = length(topology.realelems)
 
+    println("INIT_ODE_STATE: typeof topology")
+    println(typeof(topology))
+
+    println("INIT_ODE_STATE: dim")
+    println(dim)
+
+    println("INIT_ODE_STATE: nrealelem")
+    println(nrealelem)
+
     if !init_on_cpu
         event = Event(device)
         event = kernel_init_state_prognostic!(device, min(Np, 1024))(

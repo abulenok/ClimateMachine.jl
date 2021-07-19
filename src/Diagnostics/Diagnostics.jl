@@ -16,7 +16,8 @@ export DiagnosticsGroup,
     setup_atmos_spectra_diagnostics,
     setup_dump_state_diagnostics,
     setup_dump_aux_diagnostics,
-    setup_dump_tendencies_diagnostics
+    setup_dump_tendencies_diagnostics,
+    setup_dump_pysdm_vars ## added
 
 using CUDA
 using Dates

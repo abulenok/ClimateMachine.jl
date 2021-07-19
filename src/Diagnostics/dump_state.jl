@@ -46,7 +46,23 @@ function dump_state_collect(dgngrp, currtime)
     mpirank = MPI.Comm_rank(mpicomm)
 
     istate = similar(Q.data, interpol.Npl, number_states(bl, Prognostic()))
+
+    println("DUMP STATE: Prognostic() TYPEOF")
+    println(typeof(Prognostic()))
+    println("DUMP STATE: NUMSTATES TYPEOF")
+    println(typeof(number_states(bl, Prognostic())))
+    println("DUMP STATE: TYPEOF ISTATE BEFORE INTERPOL")
+    println(typeof(istate))
+    println("DUMP STATE: SIZE ISTATE BEFORE INTERPOL")
+    println(size(istate))
+    
+
     interpolate_local!(interpol, Q.data, istate)
+
+    println("DUMP STATE: TYPEOF ISTATE AFTER INTERPOL")
+    println(typeof(istate))
+    println("DUMP STATE: SIZE ISTATE AFTER INTERPOL")
+    println(size(istate))
 
     if interpol isa InterpolationCubedSphere
         # TODO: get indices here without hard-coding them
@@ -58,6 +74,15 @@ function dump_state_collect(dgngrp, currtime)
 
     if mpirank == 0
         statenames = flattenednames(vars_state(bl, Prognostic(), FT))
+
+
+        println("DUMP STATE: STATE NAMES")
+        println(statenames)
+        println("DUMP STATE: ALL STATE DATA TYPE")
+        println(typeof(all_state_data))
+        println("DUMP STATE: ALL STATE DATA SIZE")
+        println(size(all_state_data))
+
         varvals = OrderedDict()
         for (vari, varname) in enumerate(statenames)
             varvals[varname] = all_state_data[:, :, :, vari]
