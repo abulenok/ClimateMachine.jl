@@ -73,7 +73,10 @@ function PySDMConf(
     )
 end    
 
-       
+
+mutable struct CMStepper # coś co ma metodę wait & step # https://github.com/atmos-cloud-sim-uj/PySDM-examples/blob/main/PySDM_examples/Arabas_et_al_2015/mpdata.py
+
+end
         
 
         
@@ -92,6 +95,7 @@ function pysdm_init!(pysdm, varvals)
     pkg_dynamics = pyimport("PySDM.dynamics")
     pkg_init = pyimport("PySDM.initialisation")
     pkg_backend = pyimport("PySDM.backends")
+    pkg_clima = pyimport("clima_hydrodynamics")
 
 
     formulae = pkg_formulae.Formulae() #state_variable_triplet="TODO") ???????????????????????
@@ -115,14 +119,21 @@ function pysdm_init!(pysdm, varvals)
     u1 = u1 ./ courant_coef_u1
     u3 = u3 ./ courant_coef_u3
 
-    arkw_u1 = [[ (u1[x, y-1] + u1[x, y]) / 2 for y in 2:size(u1)[2]] for x in 1:size(u1)[1]]
-    arkw_u3 = [[ (u3[x-1, y] + u3[x, y]) / 2 for y in 1:size(u3)[2]] for x in 2:size(u3)[1]]
+    #arkw_u1 = [[ (u1[x, y-1] + u1[x, y]) / 2 for y in 2:size(u1)[2]] for x in 1:size(u1)[1]]
+    #arkw_u3 = [[ (u3[x-1, y] + u3[x, y]) / 2 for y in 1:size(u3)[2]] for x in 2:size(u3)[1]]
+
+    arkw_u1 = [ (u1[y, x-1] + u1[y, x]) / 2 for y in 1:size(u1)[1], x in 2:size(u1)[2]]
+    arkw_u3 = [ (u3[y-1, x] + u3[y, x]) / 2 for y in 2:size(u3)[1], x in 1:size(u3)[2]]
+
+    @assert size(arkw_u1) == (76, 75)
+    @assert size(arkw_u3) == (75, 76)
 
     println("Arakawa grid")
     println(size(arkw_u1))
+    println(typeof(arkw_u1))
     println(size(arkw_u3))
 
-    courant_field = (arkw_u1, arkw_u3) 
+    courant_field = (arkw_u1, arkw_u3)
 
     pysdm.field_values = py"{'th': 289.9911302100883, 'qv': 0.0075}" # from PySDM
 
@@ -183,17 +194,44 @@ function pysdm_init!(pysdm, varvals)
             return attributes
 
         def get_thd(self):
-            return self.core.dynamics['EulerianAdvection'].solvers['th'].advectee.get()
+            tmp = self.core.dynamics['ClimateMachine'].fields['th']
+            print('GET THD')
+            print(tmp[0])
+            print(tmp[74])
+            return self.core.dynamics['ClimateMachine'].fields['th']
 
         def get_qv(self):
-            return self.core.dynamics['EulerianAdvection'].solvers['qv'].advectee.get()
+            tmp = self.core.dynamics['ClimateMachine'].fields['qv']
+            print(tmp[0])
+            print(tmp[74])
+            return self.core.dynamics['ClimateMachine'].fields['qv']
 
         def sync(self):
-            self.core.dynamics['EulerianAdvection'].solvers.wait()
+            #self.core.dynamics['EulerianAdvection'].solvers.wait()
             super().sync()
+
+
+    def rhod_s(zZ):
+        print("rhod_s invoked")
+        print(zZ)
+        rhod = $pysdm.rhod
+        print(rhod.shape)
+        print(rhod[0])
+        print(rhod[:, 0])
+        rhod_c = rhod[0]
+        rhod_tmp = np.array([ (rhod_c[y-1] + rhod_c[y]) / 2 for y in range(1, rhod_c.shape[0])])
+        print("rhod tmp")
+        print(rhod_tmp)
+        return rhod_tmp
+
     """
     
-    environment = py"Kinematic2DMachine(dt=$pysdm.conf.dt, grid=$pysdm.conf.grid, size=$pysdm.conf.size, rhod_of=$pysdm.rhod, field_values=$pysdm.field_values)"
+    println("test rhod method")
+
+    py"rhod_s(2)"
+
+
+    environment = py"Kinematic2DMachine(dt=$pysdm.conf.dt, grid=$pysdm.conf.grid, size=$pysdm.conf.size, rhod_of=rhod_s, field_values=$pysdm.field_values)"
     
     # try multiline with backslash
 """
@@ -206,20 +244,47 @@ function pysdm_init!(pysdm, varvals)
     println("Type of environment")
     println(typeof(environment))
 
-    # here is problem
-    builder.set_environment(environment)
-    print(environment.mesh.__dict__)
 
-    print("IS OKKKKKKKKKKKKKKKKKKK")
-        
-    builder.add_dynamic(pkg_dynamics.AmbientThermodynamics())  # sync in fields from CM 
-    builder.add_dynamic(pkg_dynamics.Condensation(kappa=kappa))
-    builder.add_dynamic(pkg_dynamics.EulerianAdvection(solver = CMStepper())) # sync out field to CM and launch CM advection
+    builder.set_environment(environment)
+    println(environment.mesh.__dict__)
+
+    # override env.sync()     
+    # builder.add_dynamic(pkg_dynamics.AmbientThermodynamics())  # sync in fields from CM  w tym miejscu pobieramy pola z CliMa
+    
+    builder.add_dynamic(pkg_dynamics.Condensation(kappa=pysdm.conf.kappa))
+
+
+    # CliMa
+    # TODO: TOMS748 problem: not fa * fb < 0 -- solved
+
+    println("T, q_vap")
+    pysdm_th = varvals["T"][:, 1, :]
+    @assert size(pysdm_th) == (76, 76)
+    pysdm_th = [ (pysdm_th[y, x-1] + pysdm_th[y, x]) / 2 for y in 1:size(pysdm_th)[1], x in 2:size(pysdm_th)[2]]
+    @assert size(pysdm_th) == (76, 75)
+    pysdm_th = [ (pysdm_th[y-1, x] + pysdm_th[y, x]) / 2 for y in 2:size(pysdm_th)[1], x in 1:size(pysdm_th)[2]]
+    @assert size(pysdm_th) == (75, 75)
+
+    pysdm_qv = varvals["q_vap"][:, 1, :]
+    @assert size(pysdm_qv) == (76, 76)
+    pysdm_qv = [ (pysdm_qv[y, x-1] + pysdm_qv[y, x]) / 2 for y in 1:size(pysdm_qv)[1], x in 2:size(pysdm_qv)[2]]
+    @assert size(pysdm_qv) == (76, 75)
+    pysdm_qv = [ (pysdm_qv[y-1, x] + pysdm_qv[y, x]) / 2 for y in 2:size(pysdm_qv)[1], x in 1:size(pysdm_qv)[2]]
+    @assert size(pysdm_qv) == (75, 75)
+    
+
+    builder.add_dynamic(pkg_clima.ClimateMachine(py"{'q_v': $pysdm_qv, 'th': $pysdm_th}"))
+
+    # has sense only for multithreading
+    # builder.add_dynamic(pkg_dynamics.EulerianAdvection(solver = CMStepper())) # sync out field to CM and launch CM advection
+    
     builder.add_dynamic(pkg_dynamics.Displacement(
                                                 courant_field=courant_field,
-                                                scheme="FTBS",
-                                                enable_sedimentation=True))
+                                                # scheme="FTBS", (no such keyword)
+                                                enable_sedimentation=true))
     builder.add_dynamic(pkg_dynamics.Coalescence(kernel=pysdm.conf.kernel))
+
+    println("111111111111111111111111111111")
 
     attributes = environment.init_attributes(spatial_discretisation=pkg_init.spatial_sampling.Pseudorandom(),
                                              spectral_discretisation=pkg_init.spectral_sampling.ConstantMultiplicity(
@@ -227,6 +292,7 @@ function pysdm_init!(pysdm, varvals)
                                              ),
                                              kappa=pysdm.conf.kappa)
 
+    println("222222222222222222222222222222")
     pysdm.core = builder.build(attributes, products=[])
     return nothing
 end
@@ -243,6 +309,10 @@ function pysdm_init1(varvals, dt, dx, simtime)
     return psdmc.test_call(varvals, dt, dx, simtime)
 end
 
+
+function ()
+    
+end
 
 function PySDMKernels()
     pyimport("PySDM.physics.coalescence_kernels")

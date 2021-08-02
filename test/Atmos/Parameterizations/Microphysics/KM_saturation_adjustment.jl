@@ -1,6 +1,8 @@
 include("KinematicModel.jl")
 include("../../../../src/PySDMCall/PySDMCallback.jl")
+include("../../../../src/PySDMCall/PySDMCall.jl")
 
+using .PySDMCallbacks
 using .PySDMCall
 
 using StaticArrays
@@ -173,7 +175,7 @@ function main()
     # Working precision
     FT = Float64
     # DG polynomial order
-    N = 4 # 1 2 normal cells
+    N = 4 # 1 2 regular cells
     # Domain resolution and size
     Δx = FT(20)
     Δy = FT(1)
