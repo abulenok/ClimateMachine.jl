@@ -98,38 +98,31 @@ end
 function pysdm_init!(pysdm, varvals)
     pkg_formulae = pyimport("PySDM.physics.formulae")
     pkg_builder = pyimport("PySDM.builder")
-    #pkg_env = pyimport("PySDM.environments")
     pkg_dynamics = pyimport("PySDM.dynamics")
     pkg_init = pyimport("PySDM.initialisation")
     pkg_backend = pyimport("PySDM.backends")
     pkg_clima = pyimport("clima_hydrodynamics")
 
-    println("n_sd =====================================")
+    print("pysdm.conf.n_sd: ")
     println(pysdm.conf.n_sd)
 
-    formulae = pkg_formulae.Formulae() #state_variable_triplet="TODO") ???????????????????????
+    formulae = pkg_formulae.Formulae() # TODO: state_variable_triplet="TODO")
     builder = pkg_builder.Builder(n_sd=pysdm.conf.n_sd, backend=pkg_backend.CPU, formulae=formulae)
 
     
-    
-    println(size(varvals["ρ"]))
     pysdm.rhod = varvals["ρ"][:, 1, :] # pysdm rhod differs a little bit from CliMa rhod
     u1 = varvals["ρu[1]"][:, 1, :] ./ pysdm.rhod
     u3 = varvals["ρu[3]"][:, 1, :] ./ pysdm.rhod
 
-    println("PySDM rhod size")
-    println(size(pysdm.rhod))
-    println("u1 & u3 size")
-    println(size(u1))
-    println(size(u3))
+    @assert size(pysdm.rhod) == (76, 76)
+    @assert size(u1) == (76, 76)
+    @assert size(u3) == (76, 76)
+
 
     courant_coef_u1 = pysdm.conf.dxdz[1] / pysdm.conf.dt
     courant_coef_u3 = pysdm.conf.dxdz[2] / pysdm.conf.dt
     u1 = u1 ./ courant_coef_u1
     u3 = u3 ./ courant_coef_u3
-
-    #arkw_u1 = [[ (u1[x, y-1] + u1[x, y]) / 2 for y in 2:size(u1)[2]] for x in 1:size(u1)[1]]
-    #arkw_u3 = [[ (u3[x-1, y] + u3[x, y]) / 2 for y in 1:size(u3)[2]] for x in 2:size(u3)[1]]
 
     arkw_u1 = [ (u1[y, x-1] + u1[y, x]) / 2 for y in 1:size(u1)[1], x in 2:size(u1)[2]]
     arkw_u3 = [ (u3[y-1, x] + u3[y, x]) / 2 for y in 2:size(u3)[1], x in 1:size(u3)[2]]
@@ -137,9 +130,8 @@ function pysdm_init!(pysdm, varvals)
     @assert size(arkw_u1) == (76, 75)
     @assert size(arkw_u3) == (75, 76)
 
-    println("Arakawa grid")
+    println("Arakawa grid: ")
     println(size(arkw_u1))
-    println(typeof(arkw_u1))
     println(size(arkw_u3))
 
     courant_field = (arkw_u1, arkw_u3)
@@ -234,11 +226,6 @@ function pysdm_init!(pysdm, varvals)
         return rhod_tmp
 
     """
-    
-    println("test rhod method")
-
-    py"rhod_s(2)"
-
 
     environment = py"Kinematic2DMachine(dt=$pysdm.conf.dt, grid=$pysdm.conf.grid, size=$pysdm.conf.size, rhod_of=rhod_s, field_values=$pysdm.field_values)"
     
