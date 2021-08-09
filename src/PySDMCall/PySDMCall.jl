@@ -33,16 +33,23 @@ mutable struct PySDMConf
     spectrum_per_mass_of_dry_air # 
 end
 
-function PySDMConf(
-    grid,  # (75, 75)
+function PySDMConf(  # TODO: defining method of the same name could be a problem? YES IT IS
+ # grid (75, 75)
     size,  # (1500, 1500)
     dxdz, # (dx, dz)  
     simtime, # 1800
     dt,
+    n_sd_per_gridbox,
     kappa, # 1
     kernel,
     spectrum_per_mass_of_dry_air # 
 )
+    grid = (Int(size[1]/dxdz[1]), Int(size[2]/dxdz[2]))
+    println("++++++++++++++++++++++++++++++++++DEGAAAG")
+    println(grid[1])
+    println(grid[2])
+    println(n_sd_per_gridbox)
+    println()
 
     n_sd = grid[1] * grid[2] * n_sd_per_gridbox
 
@@ -97,6 +104,8 @@ function pysdm_init!(pysdm, varvals)
     pkg_backend = pyimport("PySDM.backends")
     pkg_clima = pyimport("clima_hydrodynamics")
 
+    println("n_sd =====================================")
+    println(pysdm.conf.n_sd)
 
     formulae = pkg_formulae.Formulae() #state_variable_triplet="TODO") ???????????????????????
     builder = pkg_builder.Builder(n_sd=pysdm.conf.n_sd, backend=pkg_backend.CPU, formulae=formulae)
@@ -196,14 +205,14 @@ function pysdm_init!(pysdm, varvals)
         def get_thd(self):
             tmp = self.core.dynamics['ClimateMachine'].fields['th']
             print('GET THD')
-            print(tmp[0])
-            print(tmp[74])
+            #print(tmp[0])
+            #print(tmp[74])
             return self.core.dynamics['ClimateMachine'].fields['th']
 
         def get_qv(self):
             tmp = self.core.dynamics['ClimateMachine'].fields['qv']
-            print(tmp[0])
-            print(tmp[74])
+            #print(tmp[0])
+            #print(tmp[74])
             return self.core.dynamics['ClimateMachine'].fields['qv']
 
         def sync(self):
@@ -257,8 +266,8 @@ function pysdm_init!(pysdm, varvals)
     # CliMa
     # TODO: TOMS748 problem: not fa * fb < 0 -- solved
 
-    println("T, q_vap")
-    pysdm_th = varvals["T"][:, 1, :]
+    println("theta_dry, q_vap")
+    pysdm_th = varvals["theta_dry"][:, 1, :]
     @assert size(pysdm_th) == (76, 76)
     pysdm_th = [ (pysdm_th[y, x-1] + pysdm_th[y, x]) / 2 for y in 1:size(pysdm_th)[1], x in 2:size(pysdm_th)[2]]
     @assert size(pysdm_th) == (76, 75)
@@ -284,7 +293,6 @@ function pysdm_init!(pysdm, varvals)
                                                 enable_sedimentation=true))
     builder.add_dynamic(pkg_dynamics.Coalescence(kernel=pysdm.conf.kernel))
 
-    println("111111111111111111111111111111")
 
     attributes = environment.init_attributes(spatial_discretisation=pkg_init.spatial_sampling.Pseudorandom(),
                                              spectral_discretisation=pkg_init.spectral_sampling.ConstantMultiplicity(
@@ -292,7 +300,6 @@ function pysdm_init!(pysdm, varvals)
                                              ),
                                              kappa=pysdm.conf.kappa)
 
-    println("222222222222222222222222222222")
     pysdm.core = builder.build(attributes, products=[])
     return nothing
 end

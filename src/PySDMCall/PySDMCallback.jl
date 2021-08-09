@@ -56,85 +56,11 @@ function GenericCallbacks.init!(cb::PySDMCallback, solver, Q, param, t)
     println("Pysdm CALLBACK init")
     println(cb.name)
 
-    interpol = cb.interpol
-    mpicomm = cb.mpicomm
-    dg = cb.dg
-    FT = eltype(Q.data)
-    bl = dg.balance_law
-    mpirank = MPI.Comm_rank(mpicomm)
+    varvals = vals_interpol(cb, Q)
+ 
 
-    istate = similar(Q.data, interpol.Npl, number_states(bl, Prognostic()))
-    
-    interpolate_local!(interpol, Q.data, istate)
+    PySDMCall.pysdm_init!(cb.pysdm, varvals) # probably varvals should be converted to an array
 
-    if interpol isa InterpolationCubedSphere
-        # TODO: get indices here without hard-coding them
-        _ρu, _ρv, _ρw = 2, 3, 4
-        project_cubed_sphere!(interpol, istate, (_ρu, _ρv, _ρw))
-    end
-
-    iaux = similar(
-        dg.state_auxiliary.data,
-        interpol.Npl,
-        number_states(bl, Auxiliary()),
-    )
-
-    interpolate_local!(interpol, dg.state_auxiliary.data, iaux)
-
-    all_state_data = accumulate_interpolated_data(mpicomm, interpol, istate)
-    all_aux_data = accumulate_interpolated_data(mpicomm, interpol, iaux)
-
-    pysdm_vars = ["ρ", "ρu[1]", "ρu[3]", "moisture.θ_v", "ρe", "ρq_tot", "T", "q_vap"] # no "ρu[2]"
-
-
-    if mpirank == 0
-        statenames = flattenednames(vars_state(bl, Prognostic(), FT))
-        auxnames = flattenednames(vars_state(bl, Auxiliary(), FT))
-        
-        println("CUSTOM CALLBACK PYSDM STATENAMES")
-        println(statenames)
-
-        println("CUSTOM CALLBACK PYSDM AUXNAMES")
-        println(auxnames)
-
-        varvals = OrderedDict()
-        for (vari, varname) in enumerate(statenames)
-            if varname in pysdm_vars
-                println(varname)
-                varvals[varname] = all_state_data[:, :, :, vari]
-                println(typeof(all_state_data[:, :, :, vari]))
-
-                println(size(all_state_data[:, :, :, vari]))
-            end    
-        end
-
-        for (vari, varname) in enumerate(auxnames)
-            if varname in pysdm_vars
-                println(varname)
-                varvals[varname] = all_aux_data[:, :, :, vari]
-                println(typeof(all_aux_data[:, :, :, vari]))
-
-
-                println(size(all_aux_data[:, :, :, vari]))
-            end  
-        end
-
-        
-        #cb.pysdm = PySDMCall.pysdm_init1(varvals, cb.dt, cb.dx, cb.simtime) # probably varvals should be converted to an array
-        println(typeof(cb.pysdm))
-        
-        #println("check size of ρe")
-                
-        #println(size(varvals["ρe"]))
-
-        PySDMCall.pysdm_init!(cb.pysdm, varvals) # probably varvals should be converted to an array
-        
-        println("CLIMA ")
-        #println(repr(UInt64(pointer_from_objref(cb.pysdm))))
-
-    end
-
-    MPI.Barrier(mpicomm)
 
     return nothing
 end
@@ -146,7 +72,7 @@ function GenericCallbacks.call!(cb::PySDMCallback, solver, Q, param, t)
     println(t)
     println()
 
-    vals = vals_interpol!(cb, Q)
+    vals = vals_interpol(cb, Q)
 
     update_pysdm_fields!(cb, vals)
 
@@ -165,9 +91,9 @@ end
 
 function update_pysdm_fields!(cb::PySDMCallback, vals)
 
-    println("T, q_vap")
+    println("theta_dry, q_vap")
 
-    pysdm_th = vals["T"][:, 1, :]
+    pysdm_th = vals["theta_dry"][:, 1, :]
     @assert size(pysdm_th) == (76, 76)
     pysdm_th = [ (pysdm_th[y, x-1] + pysdm_th[y, x]) / 2 for y in 1:size(pysdm_th)[1], x in 2:size(pysdm_th)[2]]
     @assert size(pysdm_th) == (76, 75)
@@ -183,15 +109,15 @@ function update_pysdm_fields!(cb::PySDMCallback, vals)
 
 
 
-    cb.pysdm.core.dynamics["ClimateMachine"].set_qv(pysdm_qv)
     cb.pysdm.core.dynamics["ClimateMachine"].set_th(pysdm_th)
+    cb.pysdm.core.dynamics["ClimateMachine"].set_qv(pysdm_qv)
     
     return nothing
 end
 
 
 
-function vals_interpol!(cb::PySDMCallback, Q)
+function vals_interpol(cb::PySDMCallback, Q)
 
     interpol = cb.interpol
     mpicomm = cb.mpicomm
@@ -221,7 +147,7 @@ function vals_interpol!(cb::PySDMCallback, Q)
     all_state_data = accumulate_interpolated_data(mpicomm, interpol, istate)
     all_aux_data = accumulate_interpolated_data(mpicomm, interpol, iaux)
 
-    pysdm_vars = ["ρ", "ρu[1]", "ρu[3]", "T", "q_vap"] # no "ρu[2]", "moisture.θ_v", "ρe", "ρq_tot",
+    pysdm_vars = ["ρ", "ρu[1]", "ρu[3]", "q_vap", "theta_dry"] # no "ρu[2]", "moisture.θ_v", "ρe", "ρq_tot",
 
 
     varvals = nothing
@@ -230,37 +156,37 @@ function vals_interpol!(cb::PySDMCallback, Q)
         statenames = flattenednames(vars_state(bl, Prognostic(), FT))
         auxnames = flattenednames(vars_state(bl, Auxiliary(), FT))
         
-        println("CUSTOM CALLBACK PYSDM STATENAMES")
-        println(statenames)
+        #println("CUSTOM CALLBACK PYSDM STATENAMES")
+        #println(statenames)
 
-        println("CUSTOM CALLBACK PYSDM AUXNAMES")
-        println(auxnames)
+        #println("CUSTOM CALLBACK PYSDM AUXNAMES")
+        #println(auxnames)
 
         varvals = OrderedDict()
         for (vari, varname) in enumerate(statenames)
             if varname in pysdm_vars
-                println(varname)
+                #println(varname)
                 varvals[varname] = all_state_data[:, :, :, vari]
-                println(typeof(all_state_data[:, :, :, vari]))
+                #println(typeof(all_state_data[:, :, :, vari]))
 
-                println(size(all_state_data[:, :, :, vari]))
+                #println(size(all_state_data[:, :, :, vari]))
             end    
         end
 
         for (vari, varname) in enumerate(auxnames)
             if varname in pysdm_vars
-                println(varname)
+                #println(varname)
                 varvals[varname] = all_aux_data[:, :, :, vari]
-                println(typeof(all_aux_data[:, :, :, vari]))
+                #println(typeof(all_aux_data[:, :, :, vari]))
 
 
-                println(size(all_aux_data[:, :, :, vari]))
+                #println(size(all_aux_data[:, :, :, vari]))
             end  
         end
 
         
         #cb.pysdm = PySDMCall.pysdm_init1(varvals, cb.dt, cb.dx, cb.simtime) # probably varvals should be converted to an array
-        println(typeof(cb.pysdm))
+        #println(typeof(cb.pysdm))
         
         #println("check size of ρe")
                 
@@ -268,7 +194,7 @@ function vals_interpol!(cb::PySDMCallback, Q)
 
         #PySDMCall.pysdm_init!(cb.pysdm, varvals) # probably varvals should be converted to an array
         
-        println("CLIMA ")
+        #println("CLIMA ")
         #println(repr(UInt64(pointer_from_objref(cb.pysdm))))
 
     end
