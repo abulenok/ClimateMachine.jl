@@ -4,7 +4,7 @@ module PySDMCall
 
 using PyCall
 
-export PySDM, pysdm_init, PySDMConf, PySDMKernels, PySDMSpectra, bilinear_interpol, export_particles_to_vtk
+export PySDM, pysdm_init, PySDMConf, PySDMKernels, PySDMSpectra, bilinear_interpol, export_particles_to_vtk, debug_export_products_to_vtk
 
 
 mutable struct PySDM
@@ -98,9 +98,9 @@ function pysdm_init!(pysdm, varvals)
     u1 = varvals["ρu[1]"][:, 1, :] ./ pysdm.rhod
     u3 = varvals["ρu[3]"][:, 1, :] ./ pysdm.rhod
 
-    @assert size(pysdm.rhod) == (76, 76)
-    @assert size(u1) == (76, 76)
-    @assert size(u3) == (76, 76)
+    #@assert size(pysdm.rhod) == (76, 76)
+    #@assert size(u1) == (76, 76)
+    #@assert size(u3) == (76, 76)
 
 
     courant_coef_u1 = pysdm.conf.dxdz[1] / pysdm.conf.dt
@@ -111,8 +111,8 @@ function pysdm_init!(pysdm, varvals)
     arkw_u1 = [ (u1[y, x-1] + u1[y, x]) / 2 for y in 1:size(u1)[1], x in 2:size(u1)[2]]
     arkw_u3 = [ (u3[y-1, x] + u3[y, x]) / 2 for y in 2:size(u3)[1], x in 1:size(u3)[2]]
 
-    @assert size(arkw_u1) == (76, 75)
-    @assert size(arkw_u3) == (75, 76)
+    #@assert size(arkw_u1) == (76, 75)
+    #@assert size(arkw_u3) == (75, 76)
 
     println("Arakawa grid: ")
     println(size(arkw_u1))
@@ -135,14 +135,14 @@ function pysdm_init!(pysdm, varvals)
 
 
     pysdm_th = varvals["theta_dry"][:, 1, :]
-    @assert size(pysdm_th) == (76, 76)
+    #@assert size(pysdm_th) == (76, 76)
     pysdm_th = bilinear_interpol(pysdm_th)
-    @assert size(pysdm_th) == (75, 75)
+    #@assert size(pysdm_th) == (75, 75)
 
     pysdm_qv = varvals["q_vap"][:, 1, :]
-    @assert size(pysdm_qv) == (76, 76)
+    #@assert size(pysdm_qv) == (76, 76)
     pysdm_qv = bilinear_interpol(pysdm_qv)
-    @assert size(pysdm_qv) == (75, 75)
+    #@assert size(pysdm_qv) == (75, 75)
 
     
     builder.add_dynamic(pkg_clima.ClimateMachine(py"{'qv': $pysdm_qv, 'th': $pysdm_th}"))
@@ -164,10 +164,12 @@ function pysdm_init!(pysdm, varvals)
                                              kappa=pysdm.conf.kappa)
 
 
-    pkg_PySDM_produts = pyimport("PySDM.products")
-    liquid_water_mixing_ratio_product = pkg_PySDM_produts.WaterMixingRatio(name="qc", description_prefix="liquid", radius_range=(.5, 25))
+    pkg_PySDM_products = pyimport("PySDM.products")
+    liquid_water_mixing_ratio_product = pkg_PySDM_products.WaterMixingRatio(name="qc", description_prefix="liquid", radius_range=(.5, 25))
+    relative_humidity_product = pkg_PySDM_products.RelativeHumidity()
+    particle_mean_radius_product = pkg_PySDM_products.ParticleMeanRadius()
 
-    pysdm.core = builder.build(attributes, products=[liquid_water_mixing_ratio_product])
+    pysdm.core = builder.build(attributes, products=[liquid_water_mixing_ratio_product, relative_humidity_product, particle_mean_radius_product])
 
     ####
     pkg_vtkexp = pyimport("PySDM.exporters.vtk_exporter")
@@ -182,9 +184,9 @@ function bilinear_interpol(A)
     array_size = size(A)
 
     A = [ (A[y, x-1] + A[y, x]) / 2 for y in 1:size(A)[1], x in 2:size(A)[2]]
-    @assert size(A) == (array_size[1], array_size[2]-1)
+    #@assert size(A) == (array_size[1], array_size[2]-1)
     A = [ (A[y-1, x] + A[y, x]) / 2 for y in 2:size(A)[1], x in 1:size(A)[2]]
-    @assert size(A) == (array_size[1]-1, array_size[2]-1)
+    #@assert size(A) == (array_size[1]-1, array_size[2]-1)
 
     return A
 end
@@ -200,6 +202,13 @@ end
 function export_particles_to_vtk(pysdm)
     if !isnothing(pysdm.exporter)
         pysdm.exporter.export_particles(pysdm.core)
+    end
+end
+
+#debug
+function debug_export_products_to_vtk(pysdm)
+    if !isnothing(pysdm.exporter)
+        pysdm.exporter.export_products(pysdm.core)
     end
 end
 

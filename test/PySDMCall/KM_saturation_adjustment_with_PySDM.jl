@@ -328,11 +328,13 @@ function main()
                                                      s_geom=1.4
                                                     )
 
+    n_sd = 25
+
     pysdmconf = PySDMConf((xmax, zmax), 
                           (Δx, Δz), 
                           t_end, 
                           solver_config.dt, 
-                          25, 
+                          n_sd, 
                           1, 
                           krnl.Geometric(collection_efficiency=1), 
                           spectrum_per_mass_of_dry_air

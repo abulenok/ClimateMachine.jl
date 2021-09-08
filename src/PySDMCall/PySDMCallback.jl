@@ -79,24 +79,31 @@ function GenericCallbacks.call!(cb::PySDMCallback, solver, Q, param, t)
     println()
 
     export_particles_to_vtk(cb.pysdm)
+    debug_export_products_to_vtk(cb.pysdm)
 
     vals = vals_interpol(cb, Q)
 
+    println("PySDM Dynamics")
     println(keys(cb.pysdm.core.dynamics))
     dynamics = cb.pysdm.core.dynamics
 
     #run Displacement
     #TODO: add Displacement 2 times: 1 for Condensation and 1 for Advection
+
+    export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_before_Displacement", t)
     dynamics["Displacement"]()
-    #delete!(dynamics, "Displacement")
 
     update_pysdm_fields!(cb, vals, t)
 
     cb.pysdm.core.env.sync()
     #cb.pysdm.core.run(1)
 
+    export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_before_ClimateMachine_&_Condensation", t)
     dynamics["ClimateMachine"]()
+    export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_ClimateMachine_before_Condensation", t)
     dynamics["Condensation"]()
+    export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_ClimateMachine_Condensation", t)
+
 
 """
     for (key, value) in dynamics
@@ -136,9 +143,13 @@ function update_pysdm_fields!(cb::PySDMCallback, vals, t)
 """
 
     # set frequency of plotting 
-    n_steps = 10
+    n_steps = 100
 
     n_simtime = n_steps * 10 # dt = 10, simtime 100 = steps 10
+
+    if t % n_simtime == 0
+        export_plt(cb.pysdm.core.products["RH_env"].get(), "RH_env", t)
+    end
 
     # water_mixing_ratio = get product 3 moment objentosci kropel (get water mixing ratio product)
     #liquid_water_mixing_ratio = pysdm.get_product(water_mixing_ratio)
@@ -226,6 +237,7 @@ function export_plt(var, title, t)
 
     def plot_vars(A, title=None):
         # Contour Plot
+        plt.clf()
         X, Y = np.mgrid[0:A.shape[0], 0:A.shape[1]]
         Z = A
         cp = plt.contourf(X, Y, Z)
@@ -237,9 +249,9 @@ function export_plt(var, title, t)
         return plt
     """
 
-    println(string(title, "plot"))
+    println(string(title, " plot"))
     plt = py"plot_vars($var, title=$title)"
-    plt.savefig(string(title, t, ".png"))
+    #plt.savefig(string(title, t, ".png"))
 end
 
 
