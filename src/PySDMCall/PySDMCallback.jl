@@ -104,6 +104,7 @@ function GenericCallbacks.call!(cb::PySDMCallback, solver, Q, param, t)
     dynamics["Condensation"]()
     #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_ClimateMachine_Condensation", t)
 
+    cb.pysdm.core._notify_observers()
 
     #env.sync() # take data from CliMA
     #cb.pysdm.run(1) # dynamic in dynamics

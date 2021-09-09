@@ -40,14 +40,15 @@ class Kinematic2DMachine(_Moist):
             attributes['cell id'], attributes['cell origin'], attributes['position in cell'] = \
                 self.mesh.cellular_attributes(positions)
             r_dry, n_per_kg = spectral_discretisation.sample(self.core.n_sd)
-            r_wet = r_wet_init(r_dry, self, kappa=kappa, rtol=rtol, cell_id=attributes['cell id'])
+            attributes['dry volume'] = self.formulae.trivia.volume(radius=r_dry)
+            attributes['kappa times dry volume'] = kappa*attributes['dry volume']
+            r_wet = r_wet_init(r_dry, self, kappa_times_dry_volume=kappa*attributes['dry volume'], rtol=rtol, cell_id=attributes['cell id'])
             rhod = self['rhod'].to_ndarray()
             cell_id = attributes['cell id']
             domain_volume = np.prod(np.array(self.mesh.size))
 
         attributes['n'] = discretise_n(n_per_kg * rhod[cell_id] * domain_volume)
         attributes['volume'] = self.formulae.trivia.volume(radius=r_wet)
-        attributes['dry volume'] = self.formulae.trivia.volume(radius=r_dry)
 
         return attributes
 

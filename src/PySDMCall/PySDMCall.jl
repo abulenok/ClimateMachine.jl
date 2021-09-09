@@ -132,7 +132,7 @@ function pysdm_init!(pysdm, varvals)
 
     # builder.add_dynamic(pkg_dynamics.AmbientThermodynamics()) # override env.sync()   # sync in fields from CM  w tym miejscu pobieramy pola z CliMa
 
-    builder.add_dynamic(pkg_dynamics.Condensation(kappa=pysdm.conf.kappa))
+    builder.add_dynamic(pkg_dynamics.Condensation())#kappa=pysdm.conf.kappa))
 
 
     pysdm_th = varvals["theta_dry"][:, 1, :]
@@ -151,9 +151,9 @@ function pysdm_init!(pysdm, varvals)
     # has sense only for multithreading
     # builder.add_dynamic(pkg_dynamics.EulerianAdvection(solver = CMStepper())) # sync out field to CM and launch CM advection
 
-    builder.add_dynamic(pkg_dynamics.Displacement(courant_field=courant_field,
-                                                  # scheme="FTBS",
-                                                  enable_sedimentation=false)) # enable_sedimentation=true
+    displacement = pkg_dynamics.Displacement(enable_sedimentation=false)
+    
+    builder.add_dynamic(displacement) # enable_sedimentation=true # scheme="FTBS", 
 
     builder.add_dynamic(pkg_dynamics.Coalescence(kernel=pysdm.conf.kernel))
 
@@ -180,6 +180,8 @@ function pysdm_init!(pysdm, varvals)
 
     pysdm.core = builder.build(attributes, products=pysdm_products)
 
+    displacement.upload_courant_field(courant_field)
+    
     ####
     pysdm.exporter = pkg_debug_vtk_exp.VTKExporterDebug(verbose=true)
 
