@@ -148,6 +148,8 @@ function update_pysdm_fields!(cb::PySDMCallback, vals, t)
         export_plt(cb.pysdm.core.products["activating_rate"].get(), "activating_rate", t)
         export_plt(cb.pysdm.core.products["deactivating_rate"].get(), "deactivating_rate", t)
 
+        export_plt(cb.pysdm.core.products["dt_cond_min"].get(), "dt_cond_min", t)
+        export_plt(cb.pysdm.core.products["dt_cond_max"].get(), "dt_cond_max", t)
     end
 
     # water_mixing_ratio = get product 3 moment objentosci kropel (get water mixing ratio product)

@@ -175,6 +175,9 @@ function pysdm_init!(pysdm, varvals)
     push!(pysdm_products, pkg_PySDM_products.ActivatingRate())
     push!(pysdm_products, pkg_PySDM_products.DeactivatingRate())
 
+    push!(pysdm_products, pkg_PySDM_products.CondensationTimestepMin())
+    push!(pysdm_products, pkg_PySDM_products.CondensationTimestepMax())
+
     pysdm.core = builder.build(attributes, products=pysdm_products)
 
     ####
