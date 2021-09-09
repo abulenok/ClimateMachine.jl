@@ -90,7 +90,7 @@ function GenericCallbacks.call!(cb::PySDMCallback, solver, Q, param, t)
     #run Displacement
     #TODO: add Displacement 2 times: 1 for Condensation and 1 for Advection
 
-    export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_before_Displacement", t)
+    #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_before_Displacement", t)
     dynamics["Displacement"]()
 
     update_pysdm_fields!(cb, vals, t)
@@ -98,20 +98,13 @@ function GenericCallbacks.call!(cb::PySDMCallback, solver, Q, param, t)
     cb.pysdm.core.env.sync()
     #cb.pysdm.core.run(1)
 
-    export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_before_ClimateMachine_&_Condensation", t)
+    #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_before_ClimateMachine_&_Condensation", t)
     dynamics["ClimateMachine"]()
-    export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_ClimateMachine_before_Condensation", t)
+    #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_ClimateMachine_before_Condensation", t)
     dynamics["Condensation"]()
-    export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_ClimateMachine_Condensation", t)
+    #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_ClimateMachine_Condensation", t)
 
-
-"""
-    for (key, value) in dynamics
-        # TODO: insert if in here
-        println(key)
-        value()
-    end
-"""
+    
     #env.sync() # take data from CliMA
     #cb.pysdm.run(1) # dynamic in dynamics
     # upd CliMa state vars
@@ -149,13 +142,17 @@ function update_pysdm_fields!(cb::PySDMCallback, vals, t)
 
     if t % n_simtime == 0
         export_plt(cb.pysdm.core.products["RH_env"].get(), "RH_env", t)
+        export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1", t)
+
+        export_plt(cb.pysdm.core.products["S_max"].get(), "S_max", t)
+        export_plt(cb.pysdm.core.products["activating_rate"].get(), "activating_rate", t)
+        export_plt(cb.pysdm.core.products["deactivating_rate"].get(), "deactivating_rate", t)
+
     end
 
     # water_mixing_ratio = get product 3 moment objentosci kropel (get water mixing ratio product)
     #liquid_water_mixing_ratio = pysdm.get_product(water_mixing_ratio)
     liquid_water_mixing_ratio = cb.pysdm.core.products["qc"].get()
-    println(typeof(liquid_water_mixing_ratio))
-    println(size(liquid_water_mixing_ratio))
 
     if t % n_simtime == 0
         export_plt(liquid_water_mixing_ratio, "liquid_water_mixing_ratio", t)
@@ -173,10 +170,6 @@ function update_pysdm_fields!(cb::PySDMCallback, vals, t)
     end
 
     q = THDS.PhasePartition.(q_tot, liquid_water_specific_humidity, .0)
-
-    println("q")
-    println(size(q))
-    println(typeof(q))
 
     # q is Matrix of PhasePartition objects, thus not plottable
 

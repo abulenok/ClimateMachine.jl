@@ -86,6 +86,7 @@ function pysdm_init!(pysdm, varvals)
     pkg_init = pyimport("PySDM.initialisation")
     pkg_backend = pyimport("PySDM.backends")
     pkg_clima = pyimport("clima_hydrodynamics")
+    pkg_debug_vtk_exp = pyimport("vtk_exporter_debug")
 
     print("pysdm.conf.n_sd: ")
     println(pysdm.conf.n_sd)
@@ -165,15 +166,19 @@ function pysdm_init!(pysdm, varvals)
 
 
     pkg_PySDM_products = pyimport("PySDM.products")
-    liquid_water_mixing_ratio_product = pkg_PySDM_products.WaterMixingRatio(name="qc", description_prefix="liquid", radius_range=(0.0, Inf))
-    relative_humidity_product = pkg_PySDM_products.RelativeHumidity()
-    particle_mean_radius_product = pkg_PySDM_products.ParticleMeanRadius()
+    pysdm_products = []
+    push!(pysdm_products, pkg_PySDM_products.WaterMixingRatio(name="qc", description_prefix="liquid", radius_range=(0.0, Inf)))
+    push!(pysdm_products, pkg_PySDM_products.RelativeHumidity())
+    push!(pysdm_products, pkg_PySDM_products.ParticleMeanRadius())
+    
+    push!(pysdm_products, pkg_PySDM_products.PeakSupersaturation())
+    push!(pysdm_products, pkg_PySDM_products.ActivatingRate())
+    push!(pysdm_products, pkg_PySDM_products.DeactivatingRate())
 
-    pysdm.core = builder.build(attributes, products=[liquid_water_mixing_ratio_product, relative_humidity_product, particle_mean_radius_product])
+    pysdm.core = builder.build(attributes, products=pysdm_products)
 
     ####
-    pkg_vtkexp = pyimport("PySDM.exporters.vtk_exporter")
-    pysdm.exporter = pkg_vtkexp.VTKExporter(verbose=true)
+    pysdm.exporter = pkg_debug_vtk_exp.VTKExporterDebug(verbose=true)
 
 
     return nothing
