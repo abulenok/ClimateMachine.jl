@@ -104,7 +104,7 @@ function GenericCallbacks.call!(cb::PySDMCallback, solver, Q, param, t)
     dynamics["Condensation"]()
     #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_ClimateMachine_Condensation", t)
 
-    
+
     #env.sync() # take data from CliMA
     #cb.pysdm.run(1) # dynamic in dynamics
     # upd CliMa state vars
@@ -256,7 +256,7 @@ function export_plt(var, title, t)
 
     println(string(title, " plot"))
     plt = py"plot_vars($var, title=$title)"
-    #plt.savefig(string(title, t, ".png"))
+    plt.savefig(string(title, t, ".png"))
 end
 
 
