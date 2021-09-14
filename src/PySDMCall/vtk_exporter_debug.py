@@ -100,7 +100,6 @@ class VTKExporterDebug:
                         if v.shape == grid:                
                             tmp = np.full((1, data_shape[0], data_shape[1]), v)                            
                             payload[k] = np.ascontiguousarray(np.moveaxis(tmp, 0, 2))
-                            print(v.shape)
 
                             for i in range(payload[k].shape[2]):
                                 assert(np.array_equal(payload[k][:,:,i], v, equal_nan=True))
@@ -112,8 +111,6 @@ class VTKExporterDebug:
                                 z = '~'+k+'['+str(i)+']'
                                 payload[z] = np.array(v[:,:,i])
                                 payload[z] = payload[z][:,:,np.newaxis]
-                                print(z)
-                                print(payload[z].shape)
                             print(f'{k} shape {v.shape} not equals data shape {data_shape}')
                     elif isinstance(v, numbers.Number):
                         payload[k] = np.full(data_shape, v)

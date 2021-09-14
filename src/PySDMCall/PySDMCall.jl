@@ -40,7 +40,7 @@ function PySDMConf(
     kernel,
     spectrum_per_mass_of_dry_air #
 )
-    grid = (Int(size[1]/dxdz[1]), Int(size[2]/dxdz[2]))
+    grid = (Int(size[1] / dxdz[1]), Int(size[2] / dxdz[2]))
 
     n_sd = grid[1] * grid[2] * n_sd_per_gridbox
 
@@ -79,7 +79,7 @@ function __init__()
 end
 
 
-function pysdm_init!(pysdm, varvals)
+function init!(pysdm, varvals)
     pkg_formulae = pyimport("PySDM.physics.formulae")
     pkg_builder = pyimport("PySDM.builder")
     pkg_dynamics = pyimport("PySDM.dynamics")
@@ -114,10 +114,6 @@ function pysdm_init!(pysdm, varvals)
 
     #@assert size(arkw_u1) == (76, 75)
     #@assert size(arkw_u3) == (75, 76)
-
-    println("Arakawa grid: ")
-    println(size(arkw_u1))
-    println(size(arkw_u3))
 
     courant_field = (arkw_u1, arkw_u3)
 
@@ -178,10 +174,12 @@ function pysdm_init!(pysdm, varvals)
     push!(pysdm_products, pkg_PySDM_products.CondensationTimestepMin())
     push!(pysdm_products, pkg_PySDM_products.CondensationTimestepMax())
 
+    push!(pysdm_products, pkg_PySDM_products.CloudDropletEffectiveRadius(radius_range=(0.0, Inf)))
+
     pysdm.core = builder.build(attributes, products=pysdm_products)
 
     displacement.upload_courant_field(courant_field)
-    
+
     ####
     pysdm.exporter = pkg_debug_vtk_exp.VTKExporterDebug(verbose=true)
 

@@ -5,8 +5,7 @@ module PySDMCallbacks
 export PySDMCallback
 
 include("PySDMCall.jl")
-#include("src/PySDMCall/PySDMCall.jl")
-include("../../test/Atmos/Parameterizations/Microphysics/KinematicModel.jl") #param_set
+include("../../test/Atmos/Parameterizations/Microphysics/KinematicModel.jl")
 
 using .PySDMCall
 
@@ -33,6 +32,7 @@ using CLIMAParameters
 import ClimateMachine.GenericCallbacks
 
 using PyCall
+using Statistics
 
 
 
@@ -66,7 +66,7 @@ function GenericCallbacks.init!(cb::PySDMCallback, solver, Q, param, t)
     varvals = vals_interpol(cb, Q)
 
 
-    PySDMCall.pysdm_init!(cb.pysdm, varvals)
+    PySDMCall.init!(cb.pysdm, varvals)
 
 
     return nothing
@@ -90,7 +90,6 @@ function GenericCallbacks.call!(cb::PySDMCallback, solver, Q, param, t)
     #run Displacement
     #TODO: add Displacement 2 times: 1 for Condensation and 1 for Advection
 
-    #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_before_Displacement", t)
     dynamics["Displacement"]()
 
     update_pysdm_fields!(cb, vals, t)
@@ -98,11 +97,8 @@ function GenericCallbacks.call!(cb::PySDMCallback, solver, Q, param, t)
     cb.pysdm.core.env.sync()
     #cb.pysdm.core.run(1)
 
-    #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_before_ClimateMachine_&_Condensation", t)
     dynamics["ClimateMachine"]()
-    #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_ClimateMachine_before_Condensation", t)
     dynamics["Condensation"]()
-    #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1_after_Displ_ClimateMachine_Condensation", t)
 
     cb.pysdm.core._notify_observers()
 
@@ -124,52 +120,45 @@ end
 function update_pysdm_fields!(cb::PySDMCallback, vals, t)
 
     println("theta_dry, q_vap")
-"""
-    pysdm_th = vals["theta_dry"][:, 1, :]
-    @assert size(pysdm_th) == (76, 76)
-    pysdm_th = bilinear_interpol(pysdm_th)
-    @assert size(pysdm_th) == (75, 75)
 
-    pysdm_qv = vals["q_vap"][:, 1, :]
-    @assert size(pysdm_qv) == (76, 76)
-    pysdm_qv = bilinear_interpol(pysdm_qv)
-    @assert size(pysdm_qv) == (75, 75)
-"""
 
     # set frequency of plotting
     n_steps = 10
 
     n_simtime = n_steps * 10 # dt = 10, simtime 100 = steps 10
 
+    test_flatness(cb.pysdm.core.products["radius_m1"].get(), 30)
+    export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1", t)
+
     if t % n_simtime == 0
-        export_plt(cb.pysdm.core.products["RH_env"].get(), "RH_env", t)
-        export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1", t)
+        #export_plt(cb.pysdm.core.products["RH_env"].get(), "RH_env", t)
+        #export_plt(cb.pysdm.core.products["radius_m1"].get(), "radius_m1", t)
 
-        export_plt(cb.pysdm.core.products["S_max"].get(), "S_max", t)
-        export_plt(cb.pysdm.core.products["activating_rate"].get(), "activating_rate", t)
-        export_plt(cb.pysdm.core.products["deactivating_rate"].get(), "deactivating_rate", t)
+        #export_plt(cb.pysdm.core.products["S_max"].get(), "S_max", t)
+        #export_plt(cb.pysdm.core.products["activating_rate"].get(), "activating_rate", t)
+        #export_plt(cb.pysdm.core.products["deactivating_rate"].get(), "deactivating_rate", t)
 
-        export_plt(cb.pysdm.core.products["dt_cond_min"].get(), "dt_cond_min", t)
-        export_plt(cb.pysdm.core.products["dt_cond_max"].get(), "dt_cond_max", t)
+        #export_plt(cb.pysdm.core.products["dt_cond_min"].get(), "dt_cond_min", t)
+        #export_plt(cb.pysdm.core.products["dt_cond_max"].get(), "dt_cond_max", t)
     end
 
     # water_mixing_ratio = get product 3 moment objentosci kropel (get water mixing ratio product)
     #liquid_water_mixing_ratio = pysdm.get_product(water_mixing_ratio)
-    liquid_water_mixing_ratio = cb.pysdm.core.products["qc"].get()
+    liquid_water_mixing_ratio = cb.pysdm.core.products["qc"].get() * 1e-3
 
     if t % n_simtime == 0
-        export_plt(liquid_water_mixing_ratio, "liquid_water_mixing_ratio", t)
+        #export_plt(liquid_water_mixing_ratio, "liquid_water_mixing_ratio", t)
     end
 
     #liquid_water_specific_humidity = some_f(liquid_water_mixing_ratio) # Sylwester podesli na Slacku
-    liquid_water_specific_humidity = liquid_water_mixing_ratio
+    liquid_water_specific_humidity = liquid_water_mixing_ratio 
 
     #q = THDS.PhasePartition(q_tot, liquid_water_mixing_ratio, .0) # instead of liquid_water_mixing_ratio should be liquid_water_specific_humidity
     q_tot = vals["q_tot"][:, 1, :]
     q_tot = bilinear_interpol(q_tot)
 
     if t % n_simtime == 0
-        export_plt(q_tot, "q_tot", t)
+        #export_plt(q_tot, "q_tot", t)
     end
 
     q = THDS.PhasePartition.(q_tot, liquid_water_specific_humidity, .0)
@@ -180,24 +169,22 @@ function update_pysdm_fields!(cb::PySDMCallback, vals, t)
     qv = THDS.vapor_specific_humidity.(q)
 
     if t % n_simtime == 0
-        export_plt(qv, "qv", t)
+        #export_plt(qv, "qv", t)
     end
-
-    println(typeof(qv))
 
     #T = THDS.air_temperature(param_set, e_int, q) # CLIMAParameters: param_set
     e_int = vals["e_int"][:, 1, :]
     e_int = bilinear_interpol(e_int)
 
     if t % n_simtime == 0
-        export_plt(e_int, "e_int", t)
+        #export_plt(e_int, "e_int", t)
     end
 
     # TODO - AJ shouldnt we compute new e_int and new T based on new pp?
     T = THDS.air_temperature.(param_set, e_int, q)
 
     if t % n_simtime == 0
-        export_plt(T, "T", t)
+        #export_plt(T, "T", t)
     end
 
     #thd = THDS.dry_pottemp(param_set, T, ρ) # rho has to be rhod (dry)
@@ -205,24 +192,23 @@ function update_pysdm_fields!(cb::PySDMCallback, vals, t)
     thd = THDS.dry_pottemp.(param_set, T, ρ)
 
     if t % n_simtime == 0
-        export_plt(thd, "thd", t)
+        #export_plt(thd, "thd", t)
     end
 
     RH_machine = THDS.supersaturation.(param_set, q, ρ, T, THDS.Liquid()) .+ 1.0
 
+    println("Products keys")
     println(cb.pysdm.core.products.keys)
 
     RH_pysdm = cb.pysdm.core.products["RH_env"].get() ./ 100.0
 
     if t % n_simtime == 0
-        export_plt(RH_machine, "RH_machine", t)
-        export_plt(RH_pysdm, "RH_pysdm", t)
-        export_plt((RH_pysdm .- RH_machine)./RH_machine, "RH_rel_diff", t)
+        #export_plt(RH_machine, "RH_machine", t)
+        #export_plt(RH_pysdm, "RH_pysdm", t)
+        #export_plt((RH_pysdm .- RH_machine)./RH_machine, "RH_rel_diff", t)
     end
 
-    println("new qv and thd")
-    println(size(qv))
-    println(size(thd))
+
 
     pysdm_th = thd
     pysdm_qv = qv
@@ -235,6 +221,11 @@ function update_pysdm_fields!(cb::PySDMCallback, vals, t)
     return nothing
 end
 
+
+function test_flatness(A, tolerance)
+    row_means = var(A, corrected=false, dims=1)
+    return maximum(row_means) < tolerance
+end
 
 
 function export_plt(var, title, t)
@@ -259,7 +250,7 @@ function export_plt(var, title, t)
 
     println(string(title, " plot"))
     plt = py"plot_vars($var, title=$title)"
-    plt.savefig(string(title, t, ".png"))
+    #plt.savefig(string(title, t, ".png"))
 end
 
 
@@ -302,12 +293,6 @@ function vals_interpol(cb::PySDMCallback, Q)
     if mpirank == 0
         statenames = flattenednames(vars_state(bl, Prognostic(), FT))
         auxnames = flattenednames(vars_state(bl, Auxiliary(), FT))
-
-        #println("CUSTOM CALLBACK PYSDM STATENAMES")
-        #println(statenames)
-
-        #println("CUSTOM CALLBACK PYSDM AUXNAMES")
-        #println(auxnames)
 
         varvals = OrderedDict()
         for (vari, varname) in enumerate(statenames)
