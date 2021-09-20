@@ -27,6 +27,7 @@ using ClimateMachine.Mesh.Topologies
 using Thermodynamics:
     gas_constants,
     PhaseEquil,
+    PhaseEquil_ρeq,
     PhasePartition_equil,
     PhasePartition,
     internal_energy,
@@ -43,11 +44,15 @@ using Thermodynamics:
     liquid_ice_pottemp,
     dry_pottemp
 
-using ClimateMachine.Microphysics
 using ClimateMachine.MPIStateArrays
 using ClimateMachine.ODESolvers
 using ClimateMachine.VariableTemplates
 using ClimateMachine.VTK
+
+using CloudMicrophysics.Microphysics_0M
+using CloudMicrophysics.Microphysics_1M
+import CloudMicrophysics
+const CM1M = CloudMicrophysics.Microphysics_1M
 
 using CLIMAParameters
 using CLIMAParameters.Planet:
@@ -55,31 +60,8 @@ using CLIMAParameters.Planet:
 
 using CLIMAParameters.Atmos.Microphysics
 
-struct LiquidParameterSet <: AbstractLiquidParameterSet end
-struct IceParameterSet <: AbstractIceParameterSet end
-struct RainParameterSet <: AbstractRainParameterSet end
-struct SnowParameterSet <: AbstractSnowParameterSet end
-struct MicropysicsParameterSet{L, I, R, S} <: AbstractMicrophysicsParameterSet
-    liquid::L
-    ice::I
-    rain::R
-    snow::S
-end
-struct EarthParameterSet{M} <: AbstractEarthParameterSet
-    microphys_param_set::M
-end
-
-const microphys_param_set = MicropysicsParameterSet(
-    LiquidParameterSet(),
-    IceParameterSet(),
-    RainParameterSet(),
-    SnowParameterSet(),
-)
-const param_set = EarthParameterSet(microphys_param_set)
-const liquid_param_set = param_set.microphys_param_set.liquid
-const ice_param_set = param_set.microphys_param_set.ice
-const rain_param_set = param_set.microphys_param_set.rain
-const snow_param_set = param_set.microphys_param_set.snow
+struct EarthParameterSet <: AbstractEarthParameterSet end
+const param_set = EarthParameterSet()
 
 using ClimateMachine.BalanceLaws:
     BalanceLaw, Prognostic, Auxiliary, Gradient, GradientFlux, Hyperdiffusive
