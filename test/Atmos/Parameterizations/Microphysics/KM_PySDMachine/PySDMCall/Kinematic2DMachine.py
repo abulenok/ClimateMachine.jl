@@ -30,7 +30,7 @@ class Kinematic2DMachine(_Moist):
                         kappa,
                         rtol=default_rtol
                         ):
-        # TODO #418 move to one method
+        
         super().sync()
         self.notify()
 
@@ -53,7 +53,7 @@ class Kinematic2DMachine(_Moist):
         return attributes
 
     def get_thd(self):
-        return self.core.dynamics['ClimateMachine'].fields['th']
+        return self.core.dynamics['ClimateMachine'].fields['thd']
 
     def get_qv(self):
         return self.core.dynamics['ClimateMachine'].fields['qv']

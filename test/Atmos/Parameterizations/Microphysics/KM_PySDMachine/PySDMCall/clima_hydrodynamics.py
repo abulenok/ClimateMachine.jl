@@ -9,7 +9,7 @@ class ClimateMachine:
     def __init__(self, clima_fields):
         self.fields = {}
         self.fields['qv'] = clima_fields['qv']
-        self.fields['th'] = clima_fields['th']
+        self.fields['thd'] = clima_fields['thd']
         self.core = None
 
     def register(self, builder):
@@ -22,5 +22,5 @@ class ClimateMachine:
     def set_qv(self, qv):
         self.fields['qv'] = qv
 
-    def set_th(self, th):
-        self.fields['th'] = th
+    def set_thd(self, thd):
+        self.fields['thd'] = thd

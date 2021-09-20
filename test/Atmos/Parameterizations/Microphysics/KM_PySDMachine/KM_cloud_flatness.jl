@@ -1,11 +1,18 @@
-using Dates: print, isequal
-# former KM_saturation_adjustment
+module CloudBaseIsFlatTest
 
-include("../Atmos/Parameterizations/Microphysics/KinematicModel.jl")
+include("../KinematicModel.jl")
+include("./PySDMCall/PySDMCallback.jl")
+include("./PySDMCall/PySDMCall.jl")
+include("./KM_PySDM/KM_PySDM.jl")
 
-using PyCall
+using .PySDMCallbacks
+using .PySDMCall
 
 using StaticArrays
+using Statistics
+using Test
+
+__init__()
 
 function vars_state(m::KinematicModel, ::Prognostic, FT)
     @vars begin
@@ -34,6 +41,8 @@ function vars_state(m::KinematicModel, ::Auxiliary, FT)
         e_pot::FT
         e_int::FT
         T::FT
+        theta_liq_ice::FT
+        theta_dry::FT
         S_liq::FT
         RH::FT
     end
@@ -54,10 +63,10 @@ function init_kinematic_eddy!(eddy_model, state, aux, localgeo, t)
         T::FT = dc.θ_0 * (aux.p / dc.p_1000)^(R_m / cp_m)
         ρ::FT = aux.p / R_m / T
         state.ρ = ρ
-        
+
 
         # R_m 288.31131120772176
-        
+
 
         # moisture
         state.ρq_tot = ρ * dc.qt_0
@@ -102,19 +111,16 @@ function nodal_update_auxiliary_state!(
         aux.e_pot = _grav * aux.z_coord
         aux.e_int = aux.e_tot - aux.e_kin - aux.e_pot
 
-        # saturation adjustment happens here
-        ts = PhaseEquil(param_set, aux.e_int, state.ρ, aux.q_tot)
-        q = PhasePartition(ts)
 
-        aux.T = ts.T
-        aux.q_vap = vapor_specific_humidity(q) # zmienne w przestrzeni 
+        # no saturation adjustment
+        q = PhasePartition(aux.q_tot, .0, .0)
+        aux.T = air_temperature(param_set, aux.e_int, q)
+
+        aux.theta_liq_ice = liquid_ice_pottemp(param_set, aux.T, state.ρ, q) #ts.T, state.ρ, q)
+        aux.theta_dry = dry_pottemp(param_set, aux.T, state.ρ) #ts.T, state.ρ)
+        aux.q_vap = vapor_specific_humidity(q) # zmienne w przestrzeni
         aux.q_liq = q.liq
         aux.q_ice = q.ice
-
-        # TODO: add super_saturation method in moist thermo
-        #aux.S = max(0, aux.q_vap / q_vap_saturation(ts) - FT(1)) * FT(100)
-        aux.S_liq = max(0, supersaturation(ts, Liquid()))
-        aux.RH = relative_humidity(ts)
     end
 end
 
@@ -172,43 +178,23 @@ end
 source!(::KinematicModel, _...) = nothing
 
 
-mutable struct MyCallback
-    initialized::Bool
-    calls::Int
-    finished::Bool
+function test_flatness(A, tolerance)
+    row_means = var(A, corrected=false, dims=1)
+    return maximum(row_means) < tolerance
 end
 
-
-function GenericCallbacks.init!(cb::MyCallback, solver, Q, param, t)
-
-    py"""
-    def change_state_var(Q):
-        print(type(Q))
-        print(Q.shape)
-        Q.fill(-1.)
-    """
-
-    println()
-    println("MyCallback init!")
-    println(typeof(Q))
-    println(size(Q.ρ))
-    print("Time: ")
-    println(t)
-    println()
-
-    py"change_state_var($(parent(Q.ρ)))"
+function test_cloud_base_flatness(pysdm, varvals, t)
+    do_step!(pysdm, varvals, t)
+    println("[TEST] Flatness test")
+    @test test_flatness(pysdm.core.products["radius_m1"].get(), 30)
 end
-
-GenericCallbacks.call!(cb::MyCallback, _...) = (cb.calls += 1; nothing)
-GenericCallbacks.fini!(cb::MyCallback, _...) = cb.finished = true
-
 
 
 function main()
     # Working precision
     FT = Float64
     # DG polynomial order
-    N = 1 # 1 2 regular cells
+    N = 4 # 1 2 regular cells
     # Domain resolution and size
     Δx = FT(20)
     Δy = FT(1)
@@ -228,7 +214,7 @@ function main()
 
     # time stepping
     t_ini = FT(0)
-    t_end = FT(0)#FT(60 * 30)
+    t_end = FT(10 * 30) #FT(60 * 30)
     dt = 10 # was 40
     output_freq = 9
     interval = "90steps"
@@ -281,33 +267,33 @@ function main()
 
     # output for paraview
     # initialize base prefix directory from rank 0
-    #vtkdir = abspath(joinpath(ClimateMachine.Settings.output_dir, "vtk"))
-    #if MPI.Comm_rank(mpicomm) == 0
-    #    mkpath(vtkdir)
-    #end
+    vtkdir = abspath(joinpath(ClimateMachine.Settings.output_dir, "vtk"))
+    if MPI.Comm_rank(mpicomm) == 0
+        mkpath(vtkdir)
+    end
     MPI.Barrier(mpicomm)
 
     model = driver_config.bl
-    #vtkstep = [0]
-    #cbvtk = GenericCallbacks.EveryXSimulationSteps(output_freq) do
-    #    out_dirname = @sprintf(
-    #        "new_ex_1_mpirank%04d_step%04d",
-    #        MPI.Comm_rank(mpicomm),
-    #        vtkstep[1]
-    #    )
-    #    out_path_prefix = joinpath(vtkdir, out_dirname)
-    #    @info "doing VTK output" out_path_prefix
-    #    writevtk(
-    #        out_path_prefix,
-    #        solver_config.Q,
-    #        solver_config.dg,
-    #        flattenednames(vars_state(model, Prognostic(), FT)),
-    #        solver_config.dg.state_auxiliary,
-    #        flattenednames(vars_state(model, Auxiliary(), FT)),
-    #    )
-    #    vtkstep[1] += 1
-    #    nothing
-    #end
+    vtkstep = [0]
+    cbvtk = GenericCallbacks.EveryXSimulationSteps(output_freq) do
+        out_dirname = @sprintf(
+            "new_ex_1_mpirank%04d_step%04d",
+            MPI.Comm_rank(mpicomm),
+            vtkstep[1]
+        )
+        out_path_prefix = joinpath(vtkdir, out_dirname)
+        @info "doing VTK output" out_path_prefix
+        writevtk(
+            out_path_prefix,
+            solver_config.Q,
+            solver_config.dg,
+            flattenednames(vars_state(model, Prognostic(), FT)),
+            solver_config.dg.state_auxiliary,
+            flattenednames(vars_state(model, Auxiliary(), FT)),
+        )
+        vtkstep[1] += 1
+        nothing
+    end
 
     # output for netcdf
     boundaries = [
@@ -332,29 +318,91 @@ function main()
             driver_config.name,
             interpol = interpol,
         ),
-        
+
     ]
     dgn_config = ClimateMachine.DiagnosticsConfiguration(dgngrps)
 
 
-    testcb = GenericCallbacks.EveryXSimulationSteps(MyCallback(false, 0, false), 1)
+    # configuring PySDM
+    krnl = PySDMKernels()
 
+    spectra = PySDMSpectra()
+
+    rho_STP = 1.2252141358659048
+    micrometre = 1e-6
+    centimetre = 0.01
+    spectrum_per_mass_of_dry_air = spectra.Lognormal(norm_factor=60 / centimetre ^ 3 / rho_STP,
+                                                     m_mode=0.04 * micrometre,
+                                                     s_geom=1.4
+                                                    )
+
+    n_sd = 25
+
+    pysdmconf = PySDMConfig((xmax, zmax), 
+                          (Δx, Δz), 
+                          t_end, 
+                          solver_config.dt, 
+                          n_sd, 
+                          1, 
+                          krnl.Geometric(collection_efficiency=1), 
+                          spectrum_per_mass_of_dry_air
+                         )
+
+    pysdm_cw = PySDMCallWrapper(pysdmconf, init!, test_cloud_base_flatness, nothing)                     
+
+    pysdm_cb = GenericCallbacks.AtInit(PySDMCallback("PySDMCallback",
+                                                    solver_config.dg,
+                                                    interpol,
+                                                    mpicomm,
+                                                    pysdm_cw
+                                                    ))
+
+
+
+    # get aux variables indices for testing
+    q_tot_ind = varsindex(vars_state(model, Auxiliary(), FT), :q_tot)
+    q_vap_ind = varsindex(vars_state(model, Auxiliary(), FT), :q_vap)
+    q_liq_ind = varsindex(vars_state(model, Auxiliary(), FT), :q_liq)
+    q_ice_ind = varsindex(vars_state(model, Auxiliary(), FT), :q_ice)
+    S_liq_ind = varsindex(vars_state(model, Auxiliary(), FT), :S_liq)
 
     # call solve! function for time-integrator
     result = ClimateMachine.invoke!(
         solver_config;
-        diagnostics_config = nothing, #dgn_config,
-        user_callbacks = (testcb,),
+        diagnostics_config = dgn_config,
+        user_callbacks = (cbvtk, pysdm_cb,),
         check_euclidean_distance = true,
     )
 
-    println("[TEST] PyCall invocation test")
-    
-    cb_test_max = maximum(solver_config.Q.ρ)
-    cb_test_min = minimum(solver_config.Q.ρ)
-    
-    @test isequal(cb_test_max, FT(-1)) && isequal(cb_test_min, FT(-1))
-    
+    # no supersaturation
+    #max_S_liq = maximum(abs.(solver_config.dg.state_auxiliary[:, S_liq_ind, :]))
+    #@test isequal(max_S_liq, FT(0))
+
+    # qt is conserved
+    max_q_tot = maximum(abs.(solver_config.dg.state_auxiliary[:, q_tot_ind, :]))
+    min_q_tot = minimum(abs.(solver_config.dg.state_auxiliary[:, q_tot_ind, :]))
+    @test isapprox(max_q_tot, qt_0; rtol = 1e-3)
+    @test isapprox(min_q_tot, qt_0; rtol = 1e-3)
+
+    # q_vap + q_liq = q_tot
+    max_water_diff = maximum(abs.(
+        solver_config.dg.state_auxiliary[:, q_tot_ind, :] .-
+        solver_config.dg.state_auxiliary[:, q_vap_ind, :] .-
+        solver_config.dg.state_auxiliary[:, q_liq_ind, :],
+    ))
+    @test isequal(max_water_diff, FT(0))
+
+    # no ice
+    max_q_ice = maximum(abs.(solver_config.dg.state_auxiliary[:, q_ice_ind, :]))
+    @test isequal(max_q_ice, FT(0))
+
+    # q_liq ∈ reference range
+    max_q_liq = maximum(solver_config.dg.state_auxiliary[:, q_liq_ind, :])
+    min_q_liq = minimum(solver_config.dg.state_auxiliary[:, q_liq_ind, :])
+    @test max_q_liq < FT(1e-3)
+    @test isequal(min_q_liq, FT(0))
 end
 
 main()
+
+end #module
