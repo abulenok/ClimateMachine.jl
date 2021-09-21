@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
-          version: 1.5.1
+          version: 1.6.0
       - uses: actions/setup-python@v1
         with:
           python-version: 3.8
@@ -33,7 +33,6 @@ jobs:
           pwd
       - run: |    
           julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-          julia --project -e 'using Pkg; Pkg.precompile()'
           julia --project -e 'using Pkg; Pkg.status()'
      # - run: |
      #     git clone --depth 1 https://github.com/CliMA/ClimateMachine.jl.git
