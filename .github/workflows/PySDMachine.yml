@@ -23,6 +23,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - uses: julia-actions/setup-julia@v1
         with:
           version: 1.6.0
@@ -34,6 +36,8 @@ jobs:
        #   julia --project -e 'using Pkg; Pkg.status()'
      # - run: |
      #     git clone --depth 1 https://github.com/CliMA/ClimateMachine.jl.git
+      - run: |
+          git status
       - run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
           julia --project -e 'using Pkg; Pkg.resolve;'
