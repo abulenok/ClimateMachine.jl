@@ -186,7 +186,7 @@ end
 function test_cloud_base_flatness(pysdm, varvals, t)
     do_step!(pysdm, varvals, t)
     println("[TEST] Flatness test")
-    @test test_flatness(pysdm.core.products["radius_m1"].get(), 30)
+    @test test_flatness(pysdm.particulator.products["radius_m1"].get(), 30)
 end
 
 

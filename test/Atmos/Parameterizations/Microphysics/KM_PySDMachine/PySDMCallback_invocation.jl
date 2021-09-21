@@ -5,8 +5,6 @@ include("./PySDMCall/PySDMCallback.jl")
 include("./PySDMCall/PySDMCall.jl")
 include("./KM_PySDM/KM_PySDM.jl")
 
-using Dates: print, isequal
-
 using .PySDMCallbacks
 using .PySDMCall
 using Test
@@ -108,7 +106,7 @@ function nodal_update_auxiliary_state!(
         aux.e_int = aux.e_tot - aux.e_kin - aux.e_pot
 
         # saturation adjustment happens here
-        ts = PhaseEquil(param_set, aux.e_int, state.ρ, aux.q_tot)
+        ts = PhaseEquil_ρeq(param_set, state.ρ, aux.e_int, aux.q_tot)
         q = PhasePartition(ts)
 
         aux.T = ts.T
@@ -298,7 +296,7 @@ function main()
 
     testcb = GenericCallbacks.EveryXSimulationSteps(PySDMCallback("PySDMCallback",
                                                                   solver_config.dg,
-                                                                  interpol,
+                                                                  nothing,
                                                                   mpicomm,
                                                                   pysdm_cw
                                                                   ), 1)

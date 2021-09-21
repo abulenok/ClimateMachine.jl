@@ -10,7 +10,7 @@ function init!(pysdm, varvals)
     pkg_init = pyimport("PySDM.initialisation")
     pkg_backend = pyimport("PySDM.backends")
     pkg_clima = pyimport("clima_hydrodynamics")
-    pkg_debug_vtk_exp = pyimport("vtk_exporter_debug")
+    pkg_vtk_exp = pyimport("PySDM.exporters")
 
     print("pysdm.config.n_sd: ")
     println(pysdm.config.n_sd)
@@ -86,18 +86,18 @@ function init!(pysdm, varvals)
     push!(pysdm_products, pkg_PySDM_products.CondensationTimestepMax())
     push!(pysdm_products, pkg_PySDM_products.CloudDropletEffectiveRadius(radius_range=(0.0, Inf)))
 
-    pysdm.core = builder.build(attributes, products=pysdm_products)
+    pysdm.particulator = builder.build(attributes, products=pysdm_products)
 
     displacement.upload_courant_field(courant_field)
 
     ####
-    pysdm.exporter = pkg_debug_vtk_exp.VTKExporterDebug(verbose=true)
+    pysdm.exporter = pkg_vtk_exp.VTKExporter(verbose=true)
 
     print("Products keys: ")
-    println(pysdm.core.products.keys)
+    println(pysdm.particulator.products.keys)
 
     print("PySDM Dynamics: ")
-    println(keys(pysdm.core.dynamics))
+    println(keys(pysdm.particulator.dynamics))
     
     return nothing
 end
@@ -105,7 +105,7 @@ end
 
 function do_step!(pysdm, varvals, t)
     
-    dynamics = pysdm.core.dynamics
+    dynamics = pysdm.particulator.dynamics
 
     #TODO: add Displacement 2 times: 1 for Condensation and 1 for Advection
 
@@ -113,12 +113,16 @@ function do_step!(pysdm, varvals, t)
 
     update_pysdm_fields!(pysdm, varvals, t)
 
-    pysdm.core.env.sync()
+    pysdm.particulator.env.sync()
 
     dynamics["ClimateMachine"]()
     dynamics["Condensation"]()
 
-    pysdm.core._notify_observers()
+    pysdm.particulator._notify_observers()
+
+    export_particles_to_vtk(pysdm)
+    
+    pysdm.particulator.n_steps += 1
 
     #env.sync() # take data from CliMA
     # upd CliMa state vars
@@ -127,7 +131,7 @@ end
 
 function update_pysdm_fields!(pysdm, vals, t)
 
-    liquid_water_mixing_ratio = pysdm.core.products["qc"].get() * 1e-3
+    liquid_water_mixing_ratio = pysdm.particulator.products["qc"].get() * 1e-3
 
     # TODO: instead of liquid_water_mixing_ratio should be liquid_water_specific_humidity
     liquid_water_specific_humidity = liquid_water_mixing_ratio 
@@ -148,8 +152,8 @@ function update_pysdm_fields!(pysdm, vals, t)
     ρ = pysdm.rhod
     thd = THDS.dry_pottemp.(param_set, T, ρ) # rho has to be rhod (dry)
 
-    pysdm.core.dynamics["ClimateMachine"].set_thd(thd)
-    pysdm.core.dynamics["ClimateMachine"].set_qv(qv)
+    pysdm.particulator.dynamics["ClimateMachine"].set_thd(thd)
+    pysdm.particulator.dynamics["ClimateMachine"].set_qv(qv)
 
     # TODO: passing effective_radius to ClimateMachine (Auxiliary)
     return nothing
@@ -157,7 +161,6 @@ end
 
 
 function bilinear_interpol(A)
-
     A = [ (A[y, x-1] + A[y, x]) / 2 for y in 1:size(A)[1], x in 2:size(A)[2]]
     A = [ (A[y-1, x] + A[y, x]) / 2 for y in 2:size(A)[1], x in 1:size(A)[2]]
     return A
@@ -173,7 +176,7 @@ end
 
 function export_particles_to_vtk(pysdm)
     if !isnothing(pysdm.exporter)
-        pysdm.exporter.export_particles(pysdm.core)
+        pysdm.exporter.export_particles(pysdm.particulator)
     end
 end
 
@@ -205,6 +208,6 @@ end
 #debug
 function debug_export_products_to_vtk(pysdm)
     if !isnothing(pysdm.exporter)
-        pysdm.exporter.export_products(pysdm.core)
+        pysdm.exporter.export_products(pysdm.particulator)
     end
 end

@@ -1,5 +1,3 @@
-
-
 module PySDMCallbacks
 
 export PySDMCallback
@@ -9,30 +7,17 @@ include("../../KinematicModel.jl")
 
 using .PySDMCall
 
-using CUDA
-using Dates
-using FileIO
-using JLD2
-using KernelAbstractions
 using MPI
 using OrderedCollections
-using Printf
-using StaticArrays
-import KernelAbstractions: CPU
+using PyCall
 
 using ClimateMachine.BalanceLaws
 using ClimateMachine.Mesh.Interpolation
-using ClimateMachine.VariableTemplates
 using ClimateMachine.DGMethods: SpaceDiscretization
+
 import Thermodynamics
 const THDS = Thermodynamics
-
-using CLIMAParameters
-
 import ClimateMachine.GenericCallbacks
-
-using PyCall
-using Statistics
 
 
 mutable struct PySDMCallback

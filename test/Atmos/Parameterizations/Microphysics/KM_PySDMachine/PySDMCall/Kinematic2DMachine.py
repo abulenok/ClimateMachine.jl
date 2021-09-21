@@ -14,9 +14,8 @@ class Kinematic2DMachine(_Moist):
 
     def register(self, builder):
         super().register(builder)
-        self.formulae = builder.core.formulae
-
-        rhod = builder.core.Storage.from_ndarray(self.clima_rhod.ravel())
+        self.formulae = builder.particulator.formulae
+        rhod = builder.particulator.Storage.from_ndarray(self.clima_rhod.ravel())
         self._values["current"]["rhod"] = rhod
         self._tmp["rhod"] = rhod
 
@@ -36,10 +35,10 @@ class Kinematic2DMachine(_Moist):
 
         attributes = {}
         with np.errstate(all='raise'):
-            positions = spatial_discretisation.sample(self.mesh.grid, self.core.n_sd)
+            positions = spatial_discretisation.sample(self.mesh.grid, self.particulator.n_sd)
             attributes['cell id'], attributes['cell origin'], attributes['position in cell'] = \
                 self.mesh.cellular_attributes(positions)
-            r_dry, n_per_kg = spectral_discretisation.sample(self.core.n_sd)
+            r_dry, n_per_kg = spectral_discretisation.sample(self.particulator.n_sd)
             attributes['dry volume'] = self.formulae.trivia.volume(radius=r_dry)
             attributes['kappa times dry volume'] = kappa*attributes['dry volume']
             r_wet = r_wet_init(r_dry, self, kappa_times_dry_volume=kappa*attributes['dry volume'], rtol=rtol, cell_id=attributes['cell id'])
@@ -53,11 +52,11 @@ class Kinematic2DMachine(_Moist):
         return attributes
 
     def get_thd(self):
-        return self.core.dynamics['ClimateMachine'].fields['thd']
+        return self.particulator.dynamics['ClimateMachine'].fields['thd']
 
     def get_qv(self):
-        return self.core.dynamics['ClimateMachine'].fields['qv']
+        return self.particulator.dynamics['ClimateMachine'].fields['qv']
 
     def sync(self):
-        #self.core.dynamics['EulerianAdvection'].solvers.wait()
+        #self.particulator.dynamics['EulerianAdvection'].solvers.wait()
         super().sync()

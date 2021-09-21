@@ -2,7 +2,6 @@ module PyCallTest
 
 include("../KinematicModel.jl")
 
-using Dates: print, isequal
 using PyCall
 using Test
 using StaticArrays
@@ -101,11 +100,11 @@ function nodal_update_auxiliary_state!(
         aux.e_int = aux.e_tot - aux.e_kin - aux.e_pot
 
         # saturation adjustment happens here
-        ts = PhaseEquil(param_set, aux.e_int, state.ρ, aux.q_tot)
+        ts = PhaseEquil_ρeq(param_set, state.ρ, aux.e_int, aux.q_tot)
         q = PhasePartition(ts)
 
         aux.T = ts.T
-        aux.q_vap = vapor_specific_humidity(q) # zmienne w przestrzeni 
+        aux.q_vap = vapor_specific_humidity(q)
         aux.q_liq = q.liq
         aux.q_ice = q.ice
 

@@ -11,7 +11,7 @@ export PySDM, PySDMConfig, PySDMCallWrapper, __init__
 
 mutable struct PySDM
     config
-    core
+    particulator
     rhod #TODO: Clima.ρ != PySDM.rhod
     exporter
 end
@@ -82,6 +82,7 @@ end
 function __init__()
     # adds directories to the Python search path.
     pushfirst!(PyVector(pyimport("sys")."path"), "")
+    pushfirst!(PyVector(pyimport("sys")."path"), "PySDMCall/")
     pushfirst!(PyVector(pyimport("sys")."path"), "test/Atmos/Parameterizations/Microphysics/KM_PySDMachine/PySDMCall/")
 end
 
