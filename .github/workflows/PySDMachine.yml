@@ -39,6 +39,7 @@ jobs:
       - run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
           julia --project -e 'using Pkg; Pkg.add(url="../../../../../../ClimateMachine.jl")'
+          julia --project -e 'using Pkg; Pkg.status()'
      # - run: |
      #     julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
      #     julia --project -e 'using Pkg; Pkg.precompile()'
@@ -51,5 +52,5 @@ jobs:
      #     julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaPy/PyCall.jl"))'
       - run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
-          julia --project PyCall_invocation.jl
+          julia --project runtests.jl
           
