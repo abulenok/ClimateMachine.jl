@@ -29,18 +29,15 @@ jobs:
       - uses: actions/setup-python@v1
         with:
           python-version: 3.8
-      - run: |
-          pwd
-      - run: |    
-          julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-          julia --project -e 'using Pkg; Pkg.status()'
+     # - run: |    
+      #    julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+       #   julia --project -e 'using Pkg; Pkg.status()'
      # - run: |
      #     git clone --depth 1 https://github.com/CliMA/ClimateMachine.jl.git
       - run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
-          julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-     #     julia --project -e 'using Pkg; Pkg.add(url="../../../../../../ClimateMachine.jl")'
-     #     julia --project -e 'using Pkg; Pkg.status()'
+          julia --project -e 'using Pkg; Pkg.add(url="../../../../../../ClimateMachine.jl")'
+          julia --project -e 'using Pkg; Pkg.status()'
      # - run: |
      #     julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
      #     julia --project -e 'using Pkg; Pkg.precompile()'
