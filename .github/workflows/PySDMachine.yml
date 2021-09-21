@@ -29,7 +29,8 @@ jobs:
       - uses: actions/setup-python@v1
         with:
           python-version: 3.8
-
+      - run: |
+          pwd
       - run: |
           git clone --depth 1 https://github.com/CliMA/ClimateMachine.jl.git
       - run: |
