@@ -39,10 +39,10 @@ jobs:
       - run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
           julia --project -e 'using Pkg; Pkg.add(url="../../../../../../ClimateMachine.jl")'
-      - run: |
-          julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-          julia --project -e 'using Pkg; Pkg.precompile()'
-          julia --project -e 'using Pkg; Pkg.status()'
+     # - run: |
+     #     julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+     #     julia --project -e 'using Pkg; Pkg.precompile()'
+     #     julia --project -e 'using Pkg; Pkg.status()'
      #     julia --color=yes --project test/Atmos/Parameterizations/Microphysics/KM_saturation_adjustment.jl
       - run: |
           julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaPy/Conda.jl"))'
