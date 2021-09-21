@@ -47,8 +47,8 @@ jobs:
       - run: |
           julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaPy/Conda.jl"))'
           julia -e 'using Conda; Conda.pip_interop(true); Conda.pip("install", "PySDM==1.12")'
-      - run: |
-          julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaPy/PyCall.jl"))'
+    #  - run: |
+     #     julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaPy/PyCall.jl"))'
       - run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
           julia --project PyCall_invocation.jl
