@@ -32,7 +32,9 @@ jobs:
       - run: |
           pwd
       - run: |    
-          git branch
+          julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+          julia --project -e 'using Pkg; Pkg.precompile()'
+          julia --project -e 'using Pkg; Pkg.status()'
      # - run: |
      #     git clone --depth 1 https://github.com/CliMA/ClimateMachine.jl.git
       - run: |
