@@ -31,8 +31,9 @@ jobs:
           python-version: 3.8
       - run: |
           pwd
-      - run: |
-          git clone --depth 1 https://github.com/CliMA/ClimateMachine.jl.git
+          git branch
+     # - run: |
+     #     git clone --depth 1 https://github.com/CliMA/ClimateMachine.jl.git
       - run: |
           cd ClimateMachine.jl/test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
           julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
