@@ -1,0 +1,50 @@
+name: PySDMachine
+
+env: 
+  PYTHON: "" 
+      
+defaults:
+  run:
+    shell: bash
+    working-directory: .
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, windows-latest]  # TODO: macos-latest
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: 1.5.1
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - run: |
+          pwd
+      - run: |    
+          git branch
+     # - run: |
+     #     git clone --depth 1 https://github.com/CliMA/ClimateMachine.jl.git
+      - run: |
+          cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
+          julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+          julia --project -e 'using Pkg; Pkg.precompile()'
+          julia --project -e 'using Pkg; Pkg.status()'
+     #     julia --color=yes --project test/Atmos/Parameterizations/Microphysics/KM_saturation_adjustment.jl
+      - run: |
+          julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaPy/Conda.jl"))'
+          julia -e 'using Conda; Conda.pip_interop(true); Conda.pip("install", "PySDM==1.12")'
+      - run: |
+          julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaPy/PyCall.jl"))'
+          julia --project PyCall_invocation.jl
+          
