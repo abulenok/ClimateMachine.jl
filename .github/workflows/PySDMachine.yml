@@ -33,10 +33,7 @@ jobs:
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
           julia --project -e 'using Pkg; Pkg.add(url="../../../../../../ClimateMachine.jl")'
       - run: |
-          cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
-          julia --project -e 'using Pkg; Pkg.resolve;'
-      - run: |
-          julia -e 'using Pkg; Pkg.add("Conda.jl")'
+          julia -e 'using Pkg; Pkg.add("Conda")'
           julia -e 'using Conda; Conda.pip_interop(true); Conda.pip("install", "PySDM==1.12")'
       - run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
