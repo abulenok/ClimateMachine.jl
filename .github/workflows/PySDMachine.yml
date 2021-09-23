@@ -22,20 +22,36 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.4.0
+        with:
+          access_token: ${{ github.token }}
+          
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@latest
         with:
           version: 1.6.0
-      - uses: actions/setup-python@v1
+          
+      - name: Set up Python
+        uses: actions/setup-python@latest
         with:
           python-version: 3.8
-      - run: |
+          
+      - name: Add local version of ClimateMachine
+        run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
           julia --project -e 'using Pkg; Pkg.add(url="../../../../../../ClimateMachine.jl")'
-      - run: |
+      
+      - name: Add PySDM
+        run: |
           julia -e 'using Pkg; Pkg.add("Conda")'
           julia -e 'using Conda; Conda.pip_interop(true); Conda.pip("install", "PySDM==1.12")'
-      - run: |
+      
+      - name: Run PySDMachine Tests
+        run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
           julia --project runtests.jl
           
