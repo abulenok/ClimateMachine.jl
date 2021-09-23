@@ -113,7 +113,7 @@ function nodal_update_auxiliary_state!(
 
 
         # no saturation adjustment
-        q = PhasePartition(aux.q_tot, .0, .0)
+        q = PhasePartition(aux.q_tot, 0.0, 0.0)
         aux.T = air_temperature(param_set, aux.e_int, q)
 
         aux.theta_liq_ice = liquid_ice_pottemp(param_set, aux.T, state.ρ, q) #ts.T, state.ρ, q)
@@ -179,7 +179,7 @@ source!(::KinematicModel, _...) = nothing
 
 
 function test_flatness(A, tolerance)
-    row_means = var(A, corrected=false, dims=1)
+    row_means = var(A, corrected = false, dims = 1)
     return maximum(row_means) < tolerance
 end
 
@@ -318,7 +318,6 @@ function main()
             driver_config.name,
             interpol = interpol,
         ),
-
     ]
     dgn_config = ClimateMachine.DiagnosticsConfiguration(dgngrps)
 
@@ -331,31 +330,35 @@ function main()
     rho_STP = 1.2252141358659048
     micrometre = 1e-6
     centimetre = 0.01
-    spectrum_per_mass_of_dry_air = spectra.Lognormal(norm_factor=60 / centimetre ^ 3 / rho_STP,
-                                                     m_mode=0.04 * micrometre,
-                                                     s_geom=1.4
-                                                    )
+    spectrum_per_mass_of_dry_air = spectra.Lognormal(
+        norm_factor = 60 / centimetre^3 / rho_STP,
+        m_mode = 0.04 * micrometre,
+        s_geom = 1.4,
+    )
 
     n_sd = 25
 
-    pysdmconf = PySDMConfig((xmax, zmax), 
-                          (Δx, Δz), 
-                          t_end, 
-                          solver_config.dt, 
-                          n_sd, 
-                          1, 
-                          krnl.Geometric(collection_efficiency=1), 
-                          spectrum_per_mass_of_dry_air
-                         )
+    pysdmconf = PySDMConfig(
+        (xmax, zmax),
+        (Δx, Δz),
+        t_end,
+        solver_config.dt,
+        n_sd,
+        1,
+        krnl.Geometric(collection_efficiency = 1),
+        spectrum_per_mass_of_dry_air,
+    )
 
-    pysdm_cw = PySDMCallWrapper(pysdmconf, init!, test_cloud_base_flatness, nothing)                     
+    pysdm_cw =
+        PySDMCallWrapper(pysdmconf, init!, test_cloud_base_flatness, nothing)
 
-    pysdm_cb = GenericCallbacks.AtInit(PySDMCallback("PySDMCallback",
-                                                    solver_config.dg,
-                                                    interpol,
-                                                    mpicomm,
-                                                    pysdm_cw
-                                                    ))
+    pysdm_cb = GenericCallbacks.AtInit(PySDMCallback(
+        "PySDMCallback",
+        solver_config.dg,
+        interpol,
+        mpicomm,
+        pysdm_cw,
+    ))
 
 
 
@@ -370,7 +373,7 @@ function main()
     result = ClimateMachine.invoke!(
         solver_config;
         diagnostics_config = dgn_config,
-        user_callbacks = (cbvtk, pysdm_cb,),
+        user_callbacks = (cbvtk, pysdm_cb),
         check_euclidean_distance = true,
     )
 

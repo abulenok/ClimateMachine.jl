@@ -14,7 +14,7 @@ using Test
         include(joinpath("PySDM_presence.jl"))
     end
     @testset "PySDMCallback invocation" begin
-        include(joinpath("PySDMCallback_invocation.jl")) 
+        include(joinpath("PySDMCallback_invocation.jl"))
     end
     @testset "PySDM cloud flatness" begin
         include(joinpath("KM_cloud_flatness.jl"))

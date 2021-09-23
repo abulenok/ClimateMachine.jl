@@ -23,9 +23,9 @@ import ClimateMachine.GenericCallbacks
 mutable struct PySDMCallback
     name::String
     dg::SpaceDiscretization
-    interpol
+    interpol::Any
     mpicomm::MPI.Comm
-    pysdmcw
+    pysdmcw::Any
 end
 
 
@@ -51,11 +51,11 @@ function GenericCallbacks.call!(cb::PySDMCallback, solver, Q, param, t)
     println()
 
     vals = vals_interpol(cb, Q)
-    
+
     if !isnothing(cb.pysdmcw.do_step!)
         cb.pysdmcw.do_step!(cb.pysdmcw.pysdm, vals, t)
     end
-    
+
     return nothing
 end
 

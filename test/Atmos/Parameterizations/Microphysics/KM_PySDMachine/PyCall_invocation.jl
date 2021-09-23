@@ -53,7 +53,7 @@ function init_kinematic_eddy!(eddy_model, state, aux, localgeo, t)
         T::FT = dc.θ_0 * (aux.p / dc.p_1000)^(R_m / cp_m)
         ρ::FT = aux.p / R_m / T
         state.ρ = ρ
-        
+
         # R_m 288.31131120772176
 
         # moisture
@@ -277,7 +277,8 @@ function main()
 
     MPI.Barrier(mpicomm)
 
-    testcb = GenericCallbacks.EveryXSimulationSteps(MyCallback(false, 0, false), 1)
+    testcb =
+        GenericCallbacks.EveryXSimulationSteps(MyCallback(false, 0, false), 1)
 
     # call solve! function for time-integrator
     result = ClimateMachine.invoke!(
@@ -288,12 +289,12 @@ function main()
     )
 
     println("[TEST] PyCall invocation test")
-    
+
     cb_test_max = maximum(solver_config.Q.ρ)
     cb_test_min = minimum(solver_config.Q.ρ)
-    
+
     @test isequal(cb_test_max, FT(-1)) && isequal(cb_test_min, FT(-1))
-    
+
 end
 
 main()

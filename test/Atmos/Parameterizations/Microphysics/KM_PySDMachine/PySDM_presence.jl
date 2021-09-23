@@ -13,8 +13,8 @@ pysdm = pyimport("PySDM")
 module_content = py"dir($pysdm)"
 
 @test "physics" in module_content &&
-        "builder" in module_content &&
-        "initialisation" in module_content &&
-        "backends" in module_content
+      "builder" in module_content &&
+      "initialisation" in module_content &&
+      "backends" in module_content
 
-end        
+end

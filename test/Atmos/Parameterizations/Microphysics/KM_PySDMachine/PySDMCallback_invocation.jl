@@ -1,5 +1,5 @@
 module PySDMCallbackTest
-    
+
 include("../KinematicModel.jl")
 include("./PySDMCall/PySDMCallback.jl")
 include("./PySDMCall/PySDMCall.jl")
@@ -275,31 +275,35 @@ function main()
     micrometre = 1e-6
     centimetre = 0.01
     spectrum_per_mass_of_dry_air = spectra.Lognormal(
-                                                norm_factor=60 / centimetre ^ 3 / rho_STP,
-                                                m_mode=0.04 * micrometre,
-                                                s_geom=1.4
-                                            )
+        norm_factor = 60 / centimetre^3 / rho_STP,
+        m_mode = 0.04 * micrometre,
+        s_geom = 1.4,
+    )
 
     pysdmconf = PySDMConfig(
-                        (Int(xmax/Δx), Int(zmax/Δz)),
-                        (xmax, zmax),
-                        (Δx, Δz),
-                        t_end,
-                        solver_config.dt,
-                        25,
-                        1,
-                        krnl.Geometric(collection_efficiency=1),
-                        spectrum_per_mass_of_dry_air
-                    )
+        (Int(xmax / Δx), Int(zmax / Δz)),
+        (xmax, zmax),
+        (Δx, Δz),
+        t_end,
+        solver_config.dt,
+        25,
+        1,
+        krnl.Geometric(collection_efficiency = 1),
+        spectrum_per_mass_of_dry_air,
+    )
 
     pysdm_cw = PySDMCallWrapper(pysdmconf, init!, do_step!, nothing)
 
-    testcb = GenericCallbacks.EveryXSimulationSteps(PySDMCallback("PySDMCallback",
-                                                                  solver_config.dg,
-                                                                  nothing,
-                                                                  mpicomm,
-                                                                  pysdm_cw
-                                                                  ), 1)
+    testcb = GenericCallbacks.EveryXSimulationSteps(
+        PySDMCallback(
+            "PySDMCallback",
+            solver_config.dg,
+            nothing,
+            mpicomm,
+            pysdm_cw,
+        ),
+        1,
+    )
 
 
     # call solve! function for time-integrator

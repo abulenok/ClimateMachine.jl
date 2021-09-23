@@ -16,7 +16,11 @@ function init!(pysdm, varvals)
     println(pysdm.config.n_sd)
 
     formulae = pkg_formulae.Formulae()
-    builder = pkg_builder.Builder(n_sd=pysdm.config.n_sd, backend=pkg_backend.CPU, formulae=formulae)
+    builder = pkg_builder.Builder(
+        n_sd = pysdm.config.n_sd,
+        backend = pkg_backend.CPU,
+        formulae = formulae,
+    )
 
 
     pysdm.rhod = varvals["ρ"][:, 1, :] # PySDM.rhod != CliMa.rho
@@ -28,8 +32,14 @@ function init!(pysdm, varvals)
     u1 = u1 ./ courant_coef_u1
     u3 = u3 ./ courant_coef_u3
 
-    arkw_u1 = [ (u1[y, x-1] + u1[y, x]) / 2 for y in 1:size(u1)[1], x in 2:size(u1)[2]]
-    arkw_u3 = [ (u3[y-1, x] + u3[y, x]) / 2 for y in 2:size(u3)[1], x in 1:size(u3)[2]]
+    arkw_u1 = [
+        (u1[y, x - 1] + u1[y, x]) / 2
+        for y in 1:size(u1)[1], x in 2:size(u1)[2]
+    ]
+    arkw_u3 = [
+        (u3[y - 1, x] + u3[y, x]) / 2
+        for y in 2:size(u3)[1], x in 1:size(u3)[2]
+    ]
 
     courant_field = (arkw_u1, arkw_u3)
 
@@ -37,7 +47,12 @@ function init!(pysdm, varvals)
 
     pkg_env = pyimport("Kinematic2DMachine")
 
-    environment = pkg_env.Kinematic2DMachine(dt=pysdm.config.dt, grid=pysdm.config.grid, size=pysdm.config.size, clima_rhod=pysdm.rhod)
+    environment = pkg_env.Kinematic2DMachine(
+        dt = pysdm.config.dt,
+        grid = pysdm.config.grid,
+        size = pysdm.config.size,
+        clima_rhod = pysdm.rhod,
+    )
 
     builder.set_environment(environment)
     println(environment.mesh.__dict__)
@@ -59,24 +74,33 @@ function init!(pysdm, varvals)
     # has sense only for multithreading
     # builder.add_dynamic(pkg_dynamics.EulerianAdvection(solver = CMStepper())) # sync out field to CM and launch CM advection
 
-    displacement = pkg_dynamics.Displacement(enable_sedimentation=false)
-    
+    displacement = pkg_dynamics.Displacement(enable_sedimentation = false)
+
     builder.add_dynamic(displacement) # enable_sedimentation=true # scheme="FTBS"
 
-    builder.add_dynamic(pkg_dynamics.Coalescence(kernel=pysdm.config.kernel))
+    builder.add_dynamic(pkg_dynamics.Coalescence(kernel = pysdm.config.kernel))
 
 
-    attributes = environment.init_attributes(spatial_discretisation=pkg_init.spatial_sampling.Pseudorandom(),
-                                             spectral_discretisation=pkg_init.spectral_sampling.ConstantMultiplicity(
-                                                    spectrum=pysdm.config.spectrum_per_mass_of_dry_air
-                                             ),
-                                             kappa=pysdm.config.kappa)
+    attributes = environment.init_attributes(
+        spatial_discretisation = pkg_init.spatial_sampling.Pseudorandom(),
+        spectral_discretisation = pkg_init.spectral_sampling.ConstantMultiplicity(
+            spectrum = pysdm.config.spectrum_per_mass_of_dry_air,
+        ),
+        kappa = pysdm.config.kappa,
+    )
 
 
     pkg_PySDM_products = pyimport("PySDM.products")
     pysdm_products = []
-    push!(pysdm_products, pkg_PySDM_products.WaterMixingRatio(name="qc", description_prefix="liquid", radius_range=(0.0, Inf)))
-    
+    push!(
+        pysdm_products,
+        pkg_PySDM_products.WaterMixingRatio(
+            name = "qc",
+            description_prefix = "liquid",
+            radius_range = (0.0, Inf),
+        ),
+    )
+
     push!(pysdm_products, pkg_PySDM_products.RelativeHumidity())
     push!(pysdm_products, pkg_PySDM_products.ParticleMeanRadius())
     push!(pysdm_products, pkg_PySDM_products.PeakSupersaturation())
@@ -84,27 +108,32 @@ function init!(pysdm, varvals)
     push!(pysdm_products, pkg_PySDM_products.DeactivatingRate())
     push!(pysdm_products, pkg_PySDM_products.CondensationTimestepMin())
     push!(pysdm_products, pkg_PySDM_products.CondensationTimestepMax())
-    push!(pysdm_products, pkg_PySDM_products.CloudDropletEffectiveRadius(radius_range=(0.0, Inf)))
+    push!(
+        pysdm_products,
+        pkg_PySDM_products.CloudDropletEffectiveRadius(
+            radius_range = (0.0, Inf),
+        ),
+    )
 
-    pysdm.particulator = builder.build(attributes, products=pysdm_products)
+    pysdm.particulator = builder.build(attributes, products = pysdm_products)
 
     displacement.upload_courant_field(courant_field)
 
     ####
-    pysdm.exporter = pkg_vtk_exp.VTKExporter(verbose=true)
+    pysdm.exporter = pkg_vtk_exp.VTKExporter(verbose = true)
 
     print("Products keys: ")
     println(pysdm.particulator.products.keys)
 
     print("PySDM Dynamics: ")
     println(keys(pysdm.particulator.dynamics))
-    
+
     return nothing
 end
 
 
 function do_step!(pysdm, varvals, t)
-    
+
     dynamics = pysdm.particulator.dynamics
 
     #TODO: add Displacement 2 times: 1 for Condensation and 1 for Advection
@@ -121,7 +150,7 @@ function do_step!(pysdm, varvals, t)
     pysdm.particulator._notify_observers()
 
     export_particles_to_vtk(pysdm)
-    
+
     pysdm.particulator.n_steps += 1
 
     #env.sync() # take data from CliMA
@@ -134,12 +163,12 @@ function update_pysdm_fields!(pysdm, vals, t)
     liquid_water_mixing_ratio = pysdm.particulator.products["qc"].get() * 1e-3
 
     # TODO: instead of liquid_water_mixing_ratio should be liquid_water_specific_humidity
-    liquid_water_specific_humidity = liquid_water_mixing_ratio 
+    liquid_water_specific_humidity = liquid_water_mixing_ratio
 
     q_tot = vals["q_tot"][:, 1, :]
     q_tot = bilinear_interpol(q_tot)
 
-    q = THDS.PhasePartition.(q_tot, liquid_water_specific_humidity, .0)
+    q = THDS.PhasePartition.(q_tot, liquid_water_specific_humidity, 0.0)
 
     qv = THDS.vapor_specific_humidity.(q)
 
@@ -148,7 +177,7 @@ function update_pysdm_fields!(pysdm, vals, t)
 
     # TODO - AJ shouldnt we compute new e_int and new T based on new pp?
     T = THDS.air_temperature.(param_set, e_int, q)
-    
+
     ρ = pysdm.rhod
     thd = THDS.dry_pottemp.(param_set, T, ρ) # rho has to be rhod (dry)
 
@@ -161,8 +190,8 @@ end
 
 
 function bilinear_interpol(A)
-    A = [ (A[y, x-1] + A[y, x]) / 2 for y in 1:size(A)[1], x in 2:size(A)[2]]
-    A = [ (A[y-1, x] + A[y, x]) / 2 for y in 2:size(A)[1], x in 1:size(A)[2]]
+    A = [(A[y, x - 1] + A[y, x]) / 2 for y in 1:size(A)[1], x in 2:size(A)[2]]
+    A = [(A[y - 1, x] + A[y, x]) / 2 for y in 2:size(A)[1], x in 1:size(A)[2]]
     return A
 end
 
@@ -203,11 +232,4 @@ function export_plt(var, title, t)
     println(string("Exporting ", title, " plot"))
     plt = py"plot_vars($var, title=$title)"
     plt.savefig(string(title, t, ".png"))
-end
-
-#debug
-function debug_export_products_to_vtk(pysdm)
-    if !isnothing(pysdm.exporter)
-        pysdm.exporter.export_products(pysdm.particulator)
-    end
 end
