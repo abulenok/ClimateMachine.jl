@@ -36,7 +36,7 @@ jobs:
           version: 1.6.0
           
       - name: Set up Python
-        uses: actions/setup-python@latest
+        uses: actions/setup-python@v1
         with:
           python-version: 3.8
           
