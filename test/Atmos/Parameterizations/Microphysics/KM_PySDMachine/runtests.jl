@@ -10,15 +10,15 @@ using Test, Pkg
 begin
     root_folder_index = findlast("ClimateMachine.jl", pwd())
     tmp_path = pwd()[root_folder_index[1]:end]
-    n = length(splitpath(tmp_path)) -1
+    n = length(splitpath(tmp_path)) - 1
 
-    if n==0
+    if n == 0
         path = "."
     else
         path = repeat("../", n)
     end
-    
-    Pkg.add(url=path)
+
+    Pkg.add(url = path)
 end
 
 @testset "PySDMCall tests" begin
