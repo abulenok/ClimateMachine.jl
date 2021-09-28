@@ -2,11 +2,10 @@ module PySDMCallbackTest
 
 include("../KinematicModel.jl")
 include("./PySDMCall/PySDMCallback.jl")
-include("./PySDMCall/PySDMCall.jl")
 include("./KM_PySDM/KM_PySDM.jl")
 
 using .PySDMCallbacks
-using .PySDMCall
+using .PySDMCallbacks.PySDMCall
 using Test
 using StaticArrays
 
@@ -266,6 +265,16 @@ function main()
 
     MPI.Barrier(mpicomm)
 
+    boundaries = [
+        FT(0) FT(0) FT(0)
+        xmax ymax zmax
+    ]
+    interpol = ClimateMachine.InterpolationConfiguration(
+        driver_config,
+        boundaries,
+        resolution,
+    )
+
     # configuring PySDM
     krnl = PySDMKernels()
 
@@ -298,7 +307,7 @@ function main()
         PySDMCallback(
             "PySDMCallback",
             solver_config.dg,
-            nothing,
+            interpol,
             mpicomm,
             pysdm_cw,
         ),

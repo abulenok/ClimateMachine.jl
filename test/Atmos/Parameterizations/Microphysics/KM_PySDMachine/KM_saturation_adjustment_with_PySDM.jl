@@ -1,11 +1,10 @@
 
 include("../KinematicModel.jl")
 include("./PySDMCall/PySDMCallback.jl")
-include("./PySDMCall/PySDMCall.jl")
 include("./KM_PySDM/KM_PySDM.jl")
 
 using .PySDMCallbacks
-using .PySDMCall
+using .PySDMCallbacks.PySDMCall
 
 using StaticArrays
 

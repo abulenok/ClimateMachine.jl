@@ -10,7 +10,7 @@ using Test, Pkg
 begin
     root_folder_index = findlast("ClimateMachine.jl", pwd())
     tmp_path = pwd()[root_folder_index[1]:end]
-    n = length(collect(eachmatch(r"/", tmp_path)))
+    n = length(splitpath(tmp_path)) -1
 
     if n==0
         path = "."

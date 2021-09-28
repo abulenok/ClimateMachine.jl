@@ -23,9 +23,9 @@ import ClimateMachine.GenericCallbacks
 mutable struct PySDMCallback
     name::String
     dg::SpaceDiscretization
-    interpol::Any
+    interpol::InterpolationTopology
     mpicomm::MPI.Comm
-    pysdmcw::Any
+    pysdmcw::PySDMCallWrapper
 end
 
 
