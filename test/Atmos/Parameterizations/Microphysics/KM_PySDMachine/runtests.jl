@@ -1,10 +1,25 @@
 """
 
-julia --project test/PySDMCall/runtests.jl will run the experiment from the main ClimateMachine.jl directory.
+julia --project="test/Atmos/Parameterizations/Microphysics/KM_PySDMachine" test/Atmos/Parameterizations/Microphysics/KM_PySDMachine/runtests.jl will run tests from the main ClimateMachine.jl directory.
 
 """
 
-using Test
+using Test, Pkg
+
+
+begin
+    root_folder_index = findlast("ClimateMachine.jl", pwd())
+    tmp_path = pwd()[root_folder_index[1]:end]
+    n = length(collect(eachmatch(r"/", tmp_path)))
+
+    if n==0
+        path = "."
+    else
+        path = repeat("../", n)
+    end
+    
+    Pkg.add(url=path)
+end
 
 @testset "PySDMCall tests" begin
     @testset "PyCall invocation" begin
