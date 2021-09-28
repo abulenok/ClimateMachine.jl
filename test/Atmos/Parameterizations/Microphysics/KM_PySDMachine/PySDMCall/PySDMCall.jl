@@ -4,11 +4,14 @@ module PySDMCall
 using PyCall
 import Thermodynamics
 const THDS = Thermodynamics
-include("../../KinematicModel.jl")
 
 export PySDM, PySDMConfig, PySDMCallWrapper, __init__
 
+"""
+    PySDMConfig
 
+Holds a set of parameters that configure simulation in PySDM.
+"""
 mutable struct PySDMConfig
     grid::Tuple{Int64, Int64}
     size::Tuple{Int64, Int64}
@@ -48,6 +51,15 @@ function PySDMConfig(
     )
 end
 
+"""
+    PySDM
+
+Represents PySDM. particulator, rhod, exporter are set during initialization of simulation.
+
+particulator - used to manage the system state and control the simulation.
+rhod - dry density matrix.
+exporter - PySDM's exporter. (e.g. VTKExporter)
+"""
 mutable struct PySDM
     config::PySDMConfig
     particulator::Any
@@ -55,6 +67,17 @@ mutable struct PySDM
     exporter::Any
 end
 
+"""
+    PySDMCallWrapper
+
+Packs together PySDM with functions that manage the course of PySDM's simulation.
+
+init!(::PySDM, varvals) - initializes simulation.
+do_step!(::PySDM, varvals, t) - performs step on PySDM's side.
+fini!(::PySDM, varvals, t) - run at the end of simulation.
+
+varvals - interpolated OrderedDict of ClimateMachine's variables.
+"""
 mutable struct PySDMCallWrapper
     pysdm::PySDM
     init!::Any
@@ -75,8 +98,12 @@ end
 
 # CMStepper # coś co ma metodę wait & step # https://github.com/atmos-cloud-sim-uj/PySDM-examples/blob/main/PySDM_examples/Arabas_et_al_2015/mpdata.py
 
+"""
+    __init__()
+
+Adds directories to the Python search path.
+"""
 function __init__()
-    # adds directories to the Python search path.
     pushfirst!(PyVector(pyimport("sys")."path"), "")
     pushfirst!(PyVector(pyimport("sys")."path"), "PySDMCall/")
     pushfirst!(

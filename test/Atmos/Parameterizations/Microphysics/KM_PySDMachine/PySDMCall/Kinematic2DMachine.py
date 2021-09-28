@@ -5,6 +5,11 @@ import numpy as np
 from PySDM.initialisation.r_wet_init import r_wet_init, default_rtol
 from PySDM.initialisation.multiplicities import discretise_n
 
+"""
+    Kinematic2DMachine(_Moist)
+
+PySDM's Kinematic 2D environment coupled with ClimateMachine.    
+"""
 class Kinematic2DMachine(_Moist):
 
     def __init__(self, dt, grid, size, clima_rhod):
@@ -58,5 +63,4 @@ class Kinematic2DMachine(_Moist):
         return self.particulator.dynamics['ClimateMachine'].fields['qv']
 
     def sync(self):
-        #self.particulator.dynamics['EulerianAdvection'].solvers.wait()
         super().sync()

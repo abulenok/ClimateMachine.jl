@@ -1,9 +1,10 @@
 
 """
-Class for utilizing ClimateMachine's hydrodynamics
+    ClimateMachine
+
+PySDM's dynamic created to replace EulerianAdvection.
+Provides access for qv and thd advected by ClimateMachine.
 """
-
-
 class ClimateMachine:
 
     def __init__(self, clima_fields):
@@ -15,7 +16,7 @@ class ClimateMachine:
     def register(self, builder):
         self.particulator = builder.particulator
 
-    def __call__(self):
+    def __call__(self):   
         self.particulator.env.get_predicted('qv').download(self.particulator.env.get_qv(), reshape=True)
         self.particulator.env.get_predicted('thd').download(self.particulator.env.get_thd(), reshape=True)
 

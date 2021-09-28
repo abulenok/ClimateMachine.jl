@@ -9,7 +9,7 @@ function init!(pysdm, varvals)
     pkg_dynamics = pyimport("PySDM.dynamics")
     pkg_init = pyimport("PySDM.initialisation")
     pkg_backend = pyimport("PySDM.backends")
-    pkg_clima = pyimport("clima_hydrodynamics")
+    pkg_clima = pyimport("clima_dynamic")
     pkg_vtk_exp = pyimport("PySDM.exporters")
 
     print("pysdm.config.n_sd: ")
@@ -153,7 +153,6 @@ function do_step!(pysdm, varvals, t)
 
     pysdm.particulator.n_steps += 1
 
-    #env.sync() # take data from CliMA
     # upd CliMa state vars
 end
 

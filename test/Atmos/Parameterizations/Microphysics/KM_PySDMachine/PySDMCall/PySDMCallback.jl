@@ -20,6 +20,21 @@ const THDS = Thermodynamics
 import ClimateMachine.GenericCallbacks
 
 
+"""
+    PySDMCallback
+
+Utilizes Callback API to integrate PySDM with ClimateMachine.
+Passes interpolated ClimateMachine's variables to PySDMCallWrapper's init!, do_step! and fini! methods.
+
+Example of use:
+GenericCallbacks.AtInit(PySDMCallback(
+        "PySDMCallback",
+        solver_config.dg,
+        interpol,
+        mpicomm,
+        pysdm_cw,
+    ))
+"""
 mutable struct PySDMCallback
     name::String
     dg::SpaceDiscretization
@@ -73,7 +88,12 @@ function GenericCallbacks.fini!(cb::PySDMCallback, solver, Q, param, t)
 end
 
 
-
+"""
+    vals_interpol(cb::PySDMCallback, Q)
+ 
+Returns an OrderedDict of interpolated ClimateMachine's variables: 
+    ["ρ", "ρu[1]", "ρu[3]", "q_vap", "theta_dry", "q_tot", "e_int"].
+"""
 function vals_interpol(cb::PySDMCallback, Q)
 
     interpol = cb.interpol
