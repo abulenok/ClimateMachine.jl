@@ -39,6 +39,11 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.8
+          
+      - name: Add local version of ClimateMachine
+        run: |
+          cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
+          julia --project -e 'using Pkg; Pkg.add(url="../../../../../../ClimateMachine.jl")'
       
       - name: Add PySDM
         run: |
