@@ -49,4 +49,3 @@ jobs:
         run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
           julia --project runtests.jl
-          
