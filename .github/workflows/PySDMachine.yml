@@ -7,7 +7,7 @@ defaults:
   run:
     shell: bash
     working-directory: .
-
+    
 on:
   push:
     branches: [ master ]
@@ -54,4 +54,3 @@ jobs:
         run: |
           cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
           julia --project runtests.jl
-          
