@@ -21,7 +21,7 @@ begin
     Pkg.add(url = path)
 
     Conda.pip_interop(true)
-    Conda.pip("install", "PySDM==1.12")
+    Conda.pip("install", "PySDM==1.16")
 end
 
 @testset "PySDMCall tests" begin

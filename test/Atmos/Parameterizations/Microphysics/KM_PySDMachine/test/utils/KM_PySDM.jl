@@ -68,11 +68,8 @@ function init!(pysdm, varvals)
     println(pysdm.config.n_sd)
 
     formulae = pkg_formulae.Formulae()
-    builder = pkg_builder.Builder(
-        n_sd = pysdm.config.n_sd,
-        backend = pkg_backend.CPU,
-        formulae = formulae,
-    )
+    backend = pkg_backend.CPU(formulae)
+    builder = pkg_builder.Builder(n_sd = pysdm.config.n_sd, backend = backend)
 
     pysdm.rhod = varvals["ρ"][:, 1, :]
     println(typeof(pysdm.rhod))
