@@ -1,9 +1,63 @@
 import Thermodynamics
 const THDS = Thermodynamics
+import CLIMAParameters
+const CP = CLIMAParameters
 
 using PyCall
 
+
+function set_up_pysdm(
+    solver_config,
+    interpol,
+    domain_extents_2d,
+    domain_resolution_2d,
+    init!,
+    do_step!,
+    fini!,
+)
+    # configuring PySDM
+    krnl = PySDMKernels()
+
+    spectra = PySDMSpectra()
+
+    rho_STP = 1.2252141358659048
+    micrometre = 1e-6
+    centimetre = 0.01
+    spectrum_per_mass_of_dry_air = spectra.Lognormal(
+        norm_factor = 60 / centimetre^3 / rho_STP,
+        m_mode = 0.04 * micrometre,
+        s_geom = 1.4,
+    )
+
+    n_sd = 25
+
+    pysdmconf = PySDMConfig(
+        domain_extents_2d,
+        domain_resolution_2d,
+        solver_config.timeend,
+        solver_config.dt,
+        n_sd,
+        1,
+        krnl.Geometric(collection_efficiency = 1),
+        spectrum_per_mass_of_dry_air,
+    )
+
+    pysdm_cw = PySDMCallWrapper(pysdmconf, init!, do_step!, fini!)
+
+    pysdm_cb = GenericCallbacks.AtInit(PySDMCallback(
+        "PySDMCallback",
+        solver_config.dg,
+        interpol,
+        solver_config.mpicomm,
+        pysdm_cw,
+    ))
+
+    pysdm_cb
+end
+
+
 function init!(pysdm, varvals)
+    pkg_constants = pyimport("PySDM.physics.constants")
     pkg_formulae = pyimport("PySDM.physics.formulae")
     pkg_builder = pyimport("PySDM.builder")
     pkg_dynamics = pyimport("PySDM.dynamics")
@@ -15,6 +69,8 @@ function init!(pysdm, varvals)
     print("pysdm.config.n_sd: ")
     println(pysdm.config.n_sd)
 
+    pkg_constants.Mv = CP.Planet.molmass_water(param_set)
+
     formulae = pkg_formulae.Formulae()
     builder = pkg_builder.Builder(
         n_sd = pysdm.config.n_sd,
@@ -22,8 +78,8 @@ function init!(pysdm, varvals)
         formulae = formulae,
     )
 
-
-    pysdm.rhod = varvals["ρ"][:, 1, :] # PySDM.rhod != CliMa.rho
+    pysdm.rhod = varvals["ρ"][:, 1, :]
+    println(typeof(pysdm.rhod))
     u1 = varvals["ρu[1]"][:, 1, :] ./ pysdm.rhod
     u3 = varvals["ρu[3]"][:, 1, :] ./ pysdm.rhod
 
@@ -136,8 +192,6 @@ function do_step!(pysdm, varvals, t)
 
     dynamics = pysdm.particulator.dynamics
 
-    #TODO: add Displacement 2 times: 1 for Condensation and 1 for Advection
-
     dynamics["Displacement"]()
 
     update_pysdm_fields!(pysdm, varvals, t)
@@ -152,8 +206,6 @@ function do_step!(pysdm, varvals, t)
     export_particles_to_vtk(pysdm)
 
     pysdm.particulator.n_steps += 1
-
-    # upd CliMa state vars
 end
 
 
@@ -161,7 +213,6 @@ function update_pysdm_fields!(pysdm, vals, t)
 
     liquid_water_mixing_ratio = pysdm.particulator.products["qc"].get() * 1e-3
 
-    # TODO: instead of liquid_water_mixing_ratio should be liquid_water_specific_humidity
     liquid_water_specific_humidity = liquid_water_mixing_ratio
 
     q_tot = vals["q_tot"][:, 1, :]
@@ -174,16 +225,14 @@ function update_pysdm_fields!(pysdm, vals, t)
     e_int = vals["e_int"][:, 1, :]
     e_int = bilinear_interpol(e_int)
 
-    # TODO - AJ shouldnt we compute new e_int and new T based on new pp?
     T = THDS.air_temperature.(param_set, e_int, q)
 
     ρ = pysdm.rhod
-    thd = THDS.dry_pottemp.(param_set, T, ρ) # rho has to be rhod (dry)
+    thd = THDS.dry_pottemp.(param_set, T, ρ)
 
     pysdm.particulator.dynamics["ClimateMachine"].set_thd(thd)
     pysdm.particulator.dynamics["ClimateMachine"].set_qv(qv)
 
-    # TODO: passing effective_radius to ClimateMachine (Auxiliary)
     return nothing
 end
 

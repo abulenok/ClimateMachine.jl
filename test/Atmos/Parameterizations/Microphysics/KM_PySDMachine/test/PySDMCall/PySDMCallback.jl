@@ -3,7 +3,7 @@ module PySDMCallbacks
 export PySDMCallback
 
 include("PySDMCall.jl")
-include("../../KinematicModel.jl")
+include("../../../KinematicModel.jl")
 
 using .PySDMCall
 

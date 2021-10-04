@@ -1,10 +1,10 @@
 """
 
-julia --project="test/Atmos/Parameterizations/Microphysics/KM_PySDMachine" test/Atmos/Parameterizations/Microphysics/KM_PySDMachine/runtests.jl will run tests from the main ClimateMachine.jl directory.
+julia --project="test/Atmos/Parameterizations/Microphysics/KM_PySDMachine" test/Atmos/Parameterizations/Microphysics/KM_PySDMachine/test/runtests.jl will run tests from the main ClimateMachine.jl directory.
 
 """
 
-using Test, Pkg
+using Test, Pkg, Conda
 
 
 begin
@@ -19,6 +19,9 @@ begin
     end
 
     Pkg.add(url = path)
+
+    Conda.pip_interop(true)
+    Conda.pip("install", "PySDM==1.12")
 end
 
 @testset "PySDMCall tests" begin
@@ -31,7 +34,7 @@ end
     @testset "PySDMCallback invocation" begin
         include(joinpath("PySDMCallback_invocation.jl"))
     end
-    @testset "PySDM cloud flatness" begin
-        include(joinpath("KM_cloud_flatness.jl"))
+    @testset "Constant cloud base height" begin
+        include(joinpath("KM_constant_cloud_base_height.jl"))
     end
 end

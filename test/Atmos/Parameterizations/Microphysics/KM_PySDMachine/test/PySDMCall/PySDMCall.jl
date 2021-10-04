@@ -63,7 +63,7 @@ exporter - PySDM's exporter. (e.g. VTKExporter)
 mutable struct PySDM
     config::PySDMConfig
     particulator::Any
-    rhod::Any #TODO: Clima.ρ != PySDM.rhod
+    rhod::Any
     exporter::Any
 end
 
@@ -96,8 +96,6 @@ mutable struct PySDMCallWrapper
 end
 
 
-# CMStepper # coś co ma metodę wait & step # https://github.com/atmos-cloud-sim-uj/PySDM-examples/blob/main/PySDM_examples/Arabas_et_al_2015/mpdata.py
-
 """
     __init__()
 
@@ -105,10 +103,10 @@ Adds directories to the Python search path.
 """
 function __init__()
     pushfirst!(PyVector(pyimport("sys")."path"), "")
-    pushfirst!(PyVector(pyimport("sys")."path"), "PySDMCall/")
+    pushfirst!(PyVector(pyimport("sys")."path"), "test/PySDMCall/")
     pushfirst!(
         PyVector(pyimport("sys")."path"),
-        "test/Atmos/Parameterizations/Microphysics/KM_PySDMachine/PySDMCall/",
+        "test/Atmos/Parameterizations/Microphysics/KM_PySDMachine/test/PySDMCall/",
     )
 end
 

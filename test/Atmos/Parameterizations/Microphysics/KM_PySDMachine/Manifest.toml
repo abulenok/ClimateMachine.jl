@@ -105,13 +105,13 @@ version = "0.3.9"
 
 [[ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "e8a30e8019a512e4b6c56ccebc065026624660e8"
+git-tree-sha1 = "a325370b9dd0e6bf5656a6f1a7ae80755f8ccc46"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.7.0"
+version = "1.7.2"
 
 [[ClimateMachine]]
 deps = ["Adapt", "ArgParse", "ArtifactWrappers", "BenchmarkTools", "CLIMAParameters", "CUDA", "CloudMicrophysics", "Combinatorics", "Coverage", "CubedSphere", "Dates", "DelimitedFiles", "Dierckx", "DiffEqBase", "DispatchedTuples", "Distributions", "DocStringExtensions", "DoubleFloats", "Downloads", "FFTW", "FileIO", "Formatting", "ForwardDiff", "GaussQuadrature", "InteractiveUtils", "JLD2", "KernelAbstractions", "LambertW", "LazyArrays", "LinearAlgebra", "Literate", "Logging", "MPI", "MacroTools", "NCDatasets", "NLsolve", "NonlinearSolvers", "OrderedCollections", "OrdinaryDiffEq", "PackageCompiler", "Pkg", "PrettyTables", "Printf", "Random", "RootSolvers", "Rotations", "SpecialFunctions", "StaticArrays", "StaticNumbers", "Statistics", "SurfaceFluxes", "Thermodynamics", "UnPack", "WriteVTK"]
-git-tree-sha1 = "5ac9d598c05c43adf1d375814bcbf238a0cd530f"
+git-tree-sha1 = "017bebfb07ee8234593afff8ee7590513747d4af"
 repo-rev = "ob-prep_pr"
 repo-url = "../../../../.."
 uuid = "777c4786-024f-11e9-21a3-85d5d4106250"
@@ -351,9 +351,9 @@ version = "0.4.2"
 
 [[ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "NaNMath", "Printf", "Random", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "b5e930ac60b613ef3406da6d4f42c35d8dc51419"
+git-tree-sha1 = "c4203b60d37059462af370c4f3108fb5d155ff13"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
-version = "0.10.19"
+version = "0.10.20"
 
 [[FunctionWrappers]]
 git-tree-sha1 = "241552bc2209f0fa068b6415b1942cc0aa486bcc"
@@ -396,9 +396,9 @@ version = "1.12.0+1"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "IniFile", "Logging", "MbedTLS", "NetworkOptions", "Sockets", "URIs"]
-git-tree-sha1 = "24675428ca27678f003414a98c9e473e45fe6a21"
+git-tree-sha1 = "14eece7a3308b4d8be910e265c724a6ba51a9798"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "0.9.15"
+version = "0.9.16"
 
 [[HostCPUFeatures]]
 deps = ["BitTwiddlingConvenienceFunctions", "IfElse", "Libdl", "Static"]
@@ -593,9 +593,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LoopVectorization]]
 deps = ["ArrayInterface", "CPUSummary", "CloseOpenIntervals", "DocStringExtensions", "HostCPUFeatures", "IfElse", "LayoutPointers", "LinearAlgebra", "OffsetArrays", "PolyesterWeave", "Requires", "SLEEFPirates", "Static", "ThreadingUtilities", "UnPack", "VectorizationBase"]
-git-tree-sha1 = "23b22559423dbf0217f28ea58ac05242a7770194"
+git-tree-sha1 = "c2c1a765d943267ffc01fd6a127fcb482e80f63a"
 uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
-version = "0.12.79"
+version = "0.12.82"
 
 [[MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
@@ -783,10 +783,10 @@ uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
 version = "0.11.1"
 
 [[PackageCompiler]]
-deps = ["Libdl", "Pkg", "UUIDs"]
-git-tree-sha1 = "b8283f57d58e224ce8544934491e389bebdc720c"
+deps = ["LazyArtifacts", "Libdl", "Pkg", "UUIDs"]
+git-tree-sha1 = "d2f93cc940b4a3d1aba77b266cbd7c7d404568c7"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
-version = "1.5.0"
+version = "1.6.0"
 
 [[Parameters]]
 deps = ["OrderedCollections", "UnPack"]
@@ -796,9 +796,9 @@ version = "0.12.3"
 
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "9d8c00ef7a8d110787ff6f170579846f776133a9"
+git-tree-sha1 = "a8709b968a1ea6abc2dc1967cb1db6ac9a00dfb6"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.0.4"
+version = "2.0.5"
 
 [[Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
@@ -812,9 +812,9 @@ version = "0.1.0"
 
 [[Polynomials]]
 deps = ["Intervals", "LinearAlgebra", "MutableArithmetics", "RecipesBase"]
-git-tree-sha1 = "0bbfdcd8cda81b8144de4be8a67f5717e959a005"
+git-tree-sha1 = "029d2a5d0e6c2b5d87ac690aa58dcf40c2e2acb1"
 uuid = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
-version = "2.0.14"
+version = "2.0.15"
 
 [[Preferences]]
 deps = ["TOML"]
@@ -1015,19 +1015,19 @@ version = "0.33.10"
 
 [[StatsFuns]]
 deps = ["ChainRulesCore", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]
-git-tree-sha1 = "d9bcf8d82077567abc2d972dd2db4b201a7d4263"
+git-tree-sha1 = "95072ef1a22b057b1e80f73c2a89ad238ae4cfff"
 uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-version = "0.9.11"
+version = "0.9.12"
 
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
 uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 
 [[SurfaceFluxes]]
-deps = ["CLIMAParameters", "DocStringExtensions", "KernelAbstractions", "NonlinearSolvers", "StaticArrays", "Thermodynamics"]
-git-tree-sha1 = "d62adb290289f3dcebb1e5199d0aa7ff426139f9"
+deps = ["CLIMAParameters", "DocStringExtensions", "KernelAbstractions", "NonlinearSolvers", "StaticArrays"]
+git-tree-sha1 = "0f2685b633ebf751e50842ee3525880f7d043162"
 uuid = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
-version = "0.1.0"
+version = "0.1.1"
 
 [[TOML]]
 deps = ["Dates"]
@@ -1119,9 +1119,9 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[VectorizationBase]]
 deps = ["ArrayInterface", "CPUSummary", "HostCPUFeatures", "Hwloc", "IfElse", "LayoutPointers", "Libdl", "LinearAlgebra", "SIMDTypes", "Static"]
-git-tree-sha1 = "3e2385f4ec895e694c24a1d5aba58cb6d27cf8b6"
+git-tree-sha1 = "b41a09fb935b6de8243b851727b335eec0a9eb6f"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
-version = "0.21.10"
+version = "0.21.12"
 
 [[VersionParsing]]
 git-tree-sha1 = "80229be1f670524750d905f8fc8148e5a8c4537f"
@@ -1152,9 +1152,9 @@ uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
 
 [[ZygoteRules]]
 deps = ["MacroTools"]
-git-tree-sha1 = "9e7a1e8ca60b742e508a315c17eef5211e7fbfd7"
+git-tree-sha1 = "8c1a8e4dfacb1fd631745552c8db35d0deb09ea0"
 uuid = "700de1a5-db45-46bc-99cf-38207098b444"
-version = "0.2.1"
+version = "0.2.2"
 
 [[nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
