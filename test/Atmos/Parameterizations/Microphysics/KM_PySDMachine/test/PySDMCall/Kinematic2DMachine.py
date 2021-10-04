@@ -16,6 +16,7 @@ class Kinematic2DMachine(_Moist):
         super().__init__(dt, Mesh(grid, size), [])
 
         self.clima_rhod = clima_rhod
+        self.fields = {}
 
     def register(self, builder):
         super().register(builder)
@@ -57,10 +58,16 @@ class Kinematic2DMachine(_Moist):
         return attributes
 
     def get_thd(self):
-        return self.particulator.dynamics['ClimateMachine'].fields['thd']
+        return self.fields['thd']
 
     def get_qv(self):
-        return self.particulator.dynamics['ClimateMachine'].fields['qv']
+        return self.fields['qv']
+
+    def set_thd(self, thd):
+        self.fields['thd'] = thd
+
+    def set_qv(self, qv):
+        self.fields['qv'] = qv    
 
     def sync(self):
         super().sync()

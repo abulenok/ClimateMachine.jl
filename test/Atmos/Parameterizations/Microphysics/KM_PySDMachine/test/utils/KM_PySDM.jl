@@ -63,7 +63,6 @@ function init!(pysdm, varvals)
     pkg_dynamics = pyimport("PySDM.dynamics")
     pkg_init = pyimport("PySDM.initialisation")
     pkg_backend = pyimport("PySDM.backends")
-    pkg_clima = pyimport("clima_dynamic")
     pkg_vtk_exp = pyimport("PySDM.exporters")
 
     print("pysdm.config.n_sd: ")
@@ -113,8 +112,6 @@ function init!(pysdm, varvals)
     builder.set_environment(environment)
     println(environment.mesh.__dict__)
 
-    # builder.add_dynamic(pkg_dynamics.AmbientThermodynamics()) # override env.sync()   # sync in fields from CM  w tym miejscu pobieramy pola z CliMa
-
     builder.add_dynamic(pkg_dynamics.Condensation())
 
 
@@ -124,15 +121,15 @@ function init!(pysdm, varvals)
     pysdm_qv = varvals["q_vap"][:, 1, :]
     pysdm_qv = bilinear_interpol(pysdm_qv)
 
-
-    builder.add_dynamic(pkg_clima.ClimateMachine(py"{'qv': $pysdm_qv, 'thd': $pysdm_thd}"))
+    environment.set_thd(pysdm_thd)
+    environment.set_qv(pysdm_qv)
 
     # has sense only for multithreading
     # builder.add_dynamic(pkg_dynamics.EulerianAdvection(solver = CMStepper())) # sync out field to CM and launch CM advection
 
     displacement = pkg_dynamics.Displacement(enable_sedimentation = false)
 
-    builder.add_dynamic(displacement) # enable_sedimentation=true # scheme="FTBS"
+    builder.add_dynamic(displacement)
 
     builder.add_dynamic(pkg_dynamics.Coalescence(kernel = pysdm.config.kernel))
 
@@ -198,7 +195,6 @@ function do_step!(pysdm, varvals, t)
 
     pysdm.particulator.env.sync()
 
-    dynamics["ClimateMachine"]()
     dynamics["Condensation"]()
 
     pysdm.particulator._notify_observers()
@@ -230,8 +226,8 @@ function update_pysdm_fields!(pysdm, vals, t)
     ρ = pysdm.rhod
     thd = THDS.dry_pottemp.(param_set, T, ρ)
 
-    pysdm.particulator.dynamics["ClimateMachine"].set_thd(thd)
-    pysdm.particulator.dynamics["ClimateMachine"].set_qv(qv)
+    pysdm.particulator.env.set_thd(thd)
+    pysdm.particulator.env.set_qv(qv)
 
     return nothing
 end
