@@ -40,15 +40,15 @@ jobs:
         with:
           python-version: 3.8
           
-      - name: Add local version of ClimateMachine
-        run: |
-          cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
-          julia --project -e 'using Pkg; Pkg.add(url="../../../../../../ClimateMachine.jl")'
-      
-      - name: Add PySDM
-        run: |
-          julia -e 'using Pkg; Pkg.add("Conda")'
-          julia -e 'using Conda; Conda.pip_interop(true); Conda.pip("install", "PySDM==1.12")'
+#      - name: Add local version of ClimateMachine
+#        run: |
+#          cd test/Atmos/Parameterizations/Microphysics/KM_PySDMachine
+#          julia --project -e 'using Pkg; Pkg.add(url="../../../../../../ClimateMachine.jl")'
+#      
+#      - name: Add PySDM
+#        run: |
+#          julia -e 'using Pkg; Pkg.add("Conda")'
+#          julia -e 'using Conda; Conda.pip_interop(true); Conda.pip("install", "PySDM==1.12")'
       
       - name: Run PySDMachine Tests
         run: |
