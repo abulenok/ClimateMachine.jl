@@ -15,7 +15,7 @@ function set_up_pysdm(
     do_step!,
     fini!,
 )
-    # configuring PySDM
+
     krnl = PySDMKernels()
 
     spectra = PySDMSpectra()
@@ -57,7 +57,6 @@ end
 
 
 function init!(pysdm, varvals)
-    pkg_constants = pyimport("PySDM.physics.constants")
     pkg_formulae = pyimport("PySDM.physics.formulae")
     pkg_builder = pyimport("PySDM.builder")
     pkg_dynamics = pyimport("PySDM.dynamics")
@@ -67,8 +66,6 @@ function init!(pysdm, varvals)
 
     print("pysdm.config.n_sd: ")
     println(pysdm.config.n_sd)
-
-    pkg_constants.Mv = CP.Planet.molmass_water(param_set)
 
     formulae = pkg_formulae.Formulae()
     builder = pkg_builder.Builder(
@@ -124,9 +121,6 @@ function init!(pysdm, varvals)
     environment.set_thd(pysdm_thd)
     environment.set_qv(pysdm_qv)
 
-    # has sense only for multithreading
-    # builder.add_dynamic(pkg_dynamics.EulerianAdvection(solver = CMStepper())) # sync out field to CM and launch CM advection
-
     displacement = pkg_dynamics.Displacement(enable_sedimentation = false)
 
     builder.add_dynamic(displacement)
@@ -172,7 +166,6 @@ function init!(pysdm, varvals)
 
     displacement.upload_courant_field(courant_field)
 
-    ####
     pysdm.exporter = pkg_vtk_exp.VTKExporter(verbose = true)
 
     print("Products keys: ")

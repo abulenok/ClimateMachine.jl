@@ -37,4 +37,7 @@ end
     @testset "Constant cloud base height" begin
         include(joinpath("KM_constant_cloud_base_height.jl"))
     end
+    @testset "PySDM Constants" begin
+        include(joinpath("PySDM_constants.jl"))
+    end
 end
